@@ -1,6 +1,6 @@
 {
-  "version": "3.12.3",
-  "ref": "12da1b02a2eccb44e77f4b1b3f01f0cef40dd680",
+  "version": "3.12.4",
+  "ref": "50cbde5411e57ba5fdd7bf40e9bc41f4fb49ca14",
   "files": [
     "background.js",
     "capture.css",
@@ -44,6 +44,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Brave : la page de mise à jour explique comment autoriser l'accès au dossier (brave://flags/#file-system-access-api) au lieu d'afficher une erreur. Paramètres → Mises à jour rouvre cette page à tout moment.",
+  "notes": "Le choix du dossier vérifie maintenant que c'est bien celui que le navigateur utilise (et pas une autre copie), puis la page se ferme toute seule.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
