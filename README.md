@@ -284,7 +284,7 @@ youtube-tools/
 └── icons/           16 / 32 / 48 / 128 px
 ```
 
-À la racine du dépôt, `tests/` réunit les tests de tous les outils (`node run.js`). Ils ne font pas partie de l'extension publiée.
+À la racine du dépôt, `tests/` réunit les tests de tous les outils (`node run.js`). Ils ne font pas partie de l'extension publiée. `icon.svg` est la source de l'icône, une miniature violet et blanc avec sa barre de lecture. `icon-16.svg` en est la version calée sur les pixels pour la taille 16 px. Les PNG de `icons/` en sont tirés.
 
 ## Crédits
 
