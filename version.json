@@ -1,6 +1,6 @@
 {
-  "version": "3.12.0",
-  "ref": "8051f67a32a425182e0a24f88c9f1e6127e8e7d5",
+  "version": "3.12.1",
+  "ref": "8995ee721873ca1e5f263245fe0b79e89f7be2a4",
   "files": [
     "background.js",
     "capture.css",
@@ -44,6 +44,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Paramètres en cases cliquables (roue crantée). Nouveau : heure exacte de mise en ligne sous la vidéo, recherche dans les playlists, heure exacte au survol dans Studio, vidéo similaire de plusieurs Shorts d'un coup (seule fonction qui passe par ta session Studio, après confirmation). Le dépôt est maintenant ConejoCORP/youtube-tools.",
+  "notes": "Correctif : l'heure de mise en ligne s'affiche aussi sur les vidéos récentes (date sans balise sous la vidéo).",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
