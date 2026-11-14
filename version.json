@@ -1,6 +1,6 @@
 {
-  "version": "3.15.0",
-  "ref": "831f03d119daf1d73ff68978d1882a93f3ee913a",
+  "version": "3.16.0",
+  "ref": "039207a9e91520482438160fc0643c29b1a0e4ac",
   "files": [
     "background.js",
     "capture.css",
@@ -46,6 +46,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Paramètres : nouveau bouton « Rechercher une mise à jour », qui vérifie sur place. Si une version est disponible, il devient « Mettre à jour ». Le lien du pied s'appelle maintenant « Dossier des mises à jour ».",
+  "notes": "Nouvelle icône : une miniature avec sa barre de lecture, en violet et blanc.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
