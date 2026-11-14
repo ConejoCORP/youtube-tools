@@ -1,6 +1,6 @@
 {
-  "version": "3.14.0",
-  "ref": "01d190da54a786bd71534d71c8eed5460bd82ab3",
+  "version": "3.15.0",
+  "ref": "831f03d119daf1d73ff68978d1882a93f3ee913a",
   "files": [
     "background.js",
     "capture.css",
@@ -46,6 +46,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Tags de la vidéo : affichés tout en bas de la description (repliée ou dépliée), avec leur longueur sur 500 et un bouton Copier. Aucune requête. Ils s'ajoutent aussi au CSV de la transcription (colonne tags).",
+  "notes": "Paramètres : nouveau bouton « Rechercher une mise à jour », qui vérifie sur place. Si une version est disponible, il devient « Mettre à jour ». Le lien du pied s'appelle maintenant « Dossier des mises à jour ».",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
