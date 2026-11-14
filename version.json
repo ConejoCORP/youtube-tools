@@ -1,6 +1,6 @@
 {
-  "version": "3.12.1",
-  "ref": "8995ee721873ca1e5f263245fe0b79e89f7be2a4",
+  "version": "3.12.2",
+  "ref": "3f214867734bd5d5254a72cffb1d330fcb6c7269",
   "files": [
     "background.js",
     "capture.css",
@@ -44,6 +44,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Correctif : l'heure de mise en ligne s'affiche aussi sur les vidéos récentes (date sans balise sous la vidéo).",
+  "notes": "La première installation ouvre une page Bienvenue qui fait choisir tout de suite le dossier de l'extension : les mises à jour s'y installeront ensuite sans avoir à le chercher. La page de mise à jour montre le dossier enregistré et où le retrouver.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
