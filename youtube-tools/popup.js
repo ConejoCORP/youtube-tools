@@ -509,18 +509,72 @@ function bandeauMaj(info) {
   if (dispo) $('majTexte').textContent = `Version ${info.latest} disponible`;
 }
 
-// Parametres > « Mises a jour » : la meme page, pour choisir le dossier quand on veut.
+// Parametres > « Dossier des mises a jour » : la meme page, pour choisir le dossier quand on veut.
 $('ouvrirMaj').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('update.html') }));
 
-$('majBtn').addEventListener('click', () => {
+$('majBtn').addEventListener('click', () => ouvrirPageMaj());
+
+/** Bandeau de l'accueil et pastille « MAJ » de l'icone, d'apres une reponse de GitHub. */
+function appliquerMaj(info) {
+  bandeauMaj(info);
+  chrome.action.setBadgeText({ text: info.disponible ? 'MAJ' : '' });
+  chrome.action.setBadgeBackgroundColor({ color: '#7226ff' });
+}
+
+const ouvrirPageMaj = () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('update.html') });
   window.close();
+};
+
+/*
+ * Parametres > « Rechercher une mise a jour » : la verification se fait sur
+ * place, sans quitter le popup. Une version trouvee, le meme bouton devient
+ * « Mettre a jour » et ouvre la page d'installation.
+ */
+let majTrouvee = null;
+
+function etatRecherche(texte) {
+  $('chercherMajEtat').hidden = !texte;
+  $('chercherMajEtat').textContent = texte || '';
+}
+
+$('chercherMaj').addEventListener('click', async () => {
+  const bouton = $('chercherMaj');
+  if (majTrouvee) { ouvrirPageMaj(); return; }
+
+  const U = window.__yttoolsUpdate;
+  const actuelle = chrome.runtime.getManifest().version;
+  bouton.disabled = true;
+  bouton.textContent = 'Recherche…';
+  etatRecherche('');
+
+  let info = null;
+  try { info = await U.verifier(); } catch { info = null; }
+  bouton.disabled = false;
+
+  if (!info) {
+    bouton.textContent = 'Rechercher une mise à jour';
+    const local = await U.estDossierLocal().catch(() => false);
+    etatRecherche(local
+      ? 'GitHub ne répond pas pour le moment. Réessaie dans un instant.'
+      : 'Extension installée depuis une boutique : ses mises à jour passent par elle.');
+    return;
+  }
+
+  appliquerMaj(info);
+  if (info.disponible) {
+    majTrouvee = info;
+    bouton.textContent = 'Mettre à jour';
+    bouton.classList.add('is-dispo');
+    etatRecherche(`Version ${info.latest} disponible (tu as la ${actuelle}).`);
+  } else {
+    bouton.textContent = 'Rechercher une mise à jour';
+    etatRecherche(`YouTube Tools est à jour ✓ (version ${actuelle}).`);
+  }
 });
 
 window.__yttoolsUpdate.dernierConnu().then(bandeauMaj);
 window.__yttoolsUpdate.verifier().then((info) => {
   if (!info) return;                          // hors ligne : on garde l'etat connu
-  bandeauMaj(info);
-  chrome.action.setBadgeText({ text: info.disponible ? 'MAJ' : '' });
-  chrome.action.setBadgeBackgroundColor({ color: '#7226ff' });
+  appliquerMaj(info);
 });

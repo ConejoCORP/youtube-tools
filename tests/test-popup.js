@@ -14,7 +14,7 @@ const verifie = (nom, ok, detail) => {
   console.log((ok ? '  OK   ' : '  ECHEC') + ' ' + nom + (ok || detail === undefined ? '' : '   -> ' + JSON.stringify(detail)));
 };
 
-async function popup({ ongletActif = 'https://www.youtube.com/watch?v=abc', reglages } = {}) {
+async function popup({ ongletActif = 'https://www.youtube.com/watch?v=abc', reglages, installType = 'normal', github = null } = {}) {
   const html = fs.readFileSync(EXT + 'popup.html', 'utf8').replace(/<script[^>]*><\/script>/g, '');
   const vc = new VirtualConsole();
   const erreurs = [];
@@ -31,11 +31,20 @@ async function popup({ ongletActif = 'https://www.youtube.com/watch?v=abc', regl
     tabs: {
       query: async (q) => (q && q.active ? [{ id: 1, url: ongletActif }] : []),
       sendMessage: async () => { throw new Error('pas de script'); },
-      create: async () => {}
+      create: async (o) => { ouverts.push(o.url); }
     },
     runtime: { getManifest: () => ({ version: '3.12.0' }), getURL: (p) => p },
-    management: { getSelf: async () => ({ installType: 'normal' }) },
-    action: { setBadgeText: () => {}, setBadgeBackgroundColor: () => {} }
+    management: { getSelf: async () => ({ installType }) },
+    action: { setBadgeText: (o) => { badge.texte = o.text; }, setBadgeBackgroundColor: () => {} }
+  };
+  // version.json de GitHub : { version } pour une reponse, null pour « injoignable ».
+  const ouverts = [];
+  const badge = {};
+  let lectures = 0;
+  window.fetch = async () => {
+    lectures++;
+    if (!github) throw new Error('hors ligne');
+    return { ok: true, json: async () => github };
   };
   window.addEventListener('error', (e) => erreurs.push(String(e.message)));
   try {
@@ -43,7 +52,7 @@ async function popup({ ongletActif = 'https://www.youtube.com/watch?v=abc', regl
     window.eval(fs.readFileSync(EXT + 'popup.js', 'utf8'));
   } catch (e) { erreurs.push(String(e.message)); }
   await sleep(80);
-  return { window, doc: window.document, stock, erreurs };
+  return { window, doc: window.document, stock, erreurs, ouverts, badge, lectures: () => lectures };
 }
 
 const clic = (w, el) => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
@@ -126,6 +135,38 @@ const clic = (w, el) => el.dispatchEvent(new w.MouseEvent('click', { bubbles: tr
     clic(p.window, p.doc.getElementById('ouvrirReglages'));
     verifie('l’onglet Studio est affiché d’emblée', p.doc.querySelector('.site[data-site=studio]').getAttribute('aria-selected') === 'true');
     p.window.close();
+  }
+
+  console.log('\n4. Paramètres > « Rechercher une mise à jour »');
+  {
+    const chercher = async (opts) => {
+      const p = await popup(opts);
+      clic(p.window, p.doc.getElementById('ouvrirReglages'));
+      const avant = p.lectures();
+      clic(p.window, p.doc.getElementById('chercherMaj'));
+      await sleep(60);
+      return { p, b: p.doc.getElementById('chercherMaj'), etat: p.doc.getElementById('chercherMajEtat'), lu: p.lectures() > avant };
+    };
+
+    const dispo = await chercher({ installType: 'development', github: { version: '3.13.0', notes: 'Nouveautés' } });
+    verifie('le clic interroge GitHub', dispo.lu);
+    verifie('version trouvée, annoncée sur place', dispo.etat.textContent === 'Version 3.13.0 disponible (tu as la 3.12.0).', dispo.etat.textContent);
+    verifie('le bouton devient « Mettre à jour »', dispo.b.textContent === 'Mettre à jour' && dispo.b.classList.contains('is-dispo'), dispo.b.textContent);
+    verifie('bandeau de l’accueil et pastille MAJ', !dispo.p.doc.getElementById('maj').hidden && dispo.p.badge.texte === 'MAJ');
+    clic(dispo.p.window, dispo.b);
+    verifie('« Mettre à jour » ouvre la page d’installation', dispo.p.ouverts.includes('update.html'), dispo.p.ouverts);
+    dispo.p.window.close();
+
+    const ajour = await chercher({ installType: 'development', github: { version: '3.12.0' } });
+    verifie('déjà à jour : dit la version', ajour.etat.textContent === 'YouTube Tools est à jour ✓ (version 3.12.0).', ajour.etat.textContent);
+    verifie('déjà à jour : le bouton reste « Rechercher »', ajour.b.textContent === 'Rechercher une mise à jour' && !ajour.b.disabled);
+
+    const horsLigne = await chercher({ installType: 'development', github: null });
+    verifie('GitHub injoignable : le dit', /ne répond pas/.test(horsLigne.etat.textContent), horsLigne.etat.textContent);
+
+    const boutique = await chercher({ installType: 'normal', github: { version: '9.0.0' } });
+    verifie('installée depuis une boutique : pas de recherche GitHub', !boutique.lu);
+    verifie('installée depuis une boutique : l’explique', /boutique/.test(boutique.etat.textContent), boutique.etat.textContent);
   }
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));

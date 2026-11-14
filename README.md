@@ -207,7 +207,7 @@ La **mise à jour automatique** lit `version.json` sur GitHub, sans cookie. Elle
 
 ## Mise à jour automatique
 
-Au démarrage du navigateur et à chaque ouverture du popup, l'extension lit [`version.json`](version.json) sur GitHub. Si une version plus récente existe :
+Au démarrage du navigateur et à chaque ouverture du popup, l'extension lit [`version.json`](version.json) sur GitHub. Tu peux aussi lancer la recherche toi-même : **Paramètres → Rechercher une mise à jour** répond sur place (« à jour », ou « Version x disponible », et le bouton devient **Mettre à jour**). Si une version plus récente existe :
 
 1. une pastille **MAJ** s'affiche sur l'icône, et un bandeau **Version x disponible** en haut du popup ;
 2. **Mettre à jour** ouvre une page dédiée, qui montre les nouveautés ;
@@ -215,7 +215,7 @@ Au démarrage du navigateur et à chaque ouverture du popup, l'extension lit [`v
 
 Aucune API ne permet à une extension de réécrire ses propres fichiers : on passe par l'accès aux fichiers du navigateur. Il faut donc lui montrer **une fois** le dossier `youtube-tools` (celui qui contient `manifest.json`) : dès l'installation, sur la page **Bienvenue**, ou à la première mise à jour si tu l'as passée. Il est ensuite mémorisé ; la page de mise à jour dit lequel et permet d'en choisir un autre. Chrome peut encore te demander de **confirmer l'accès** d'un clic (s'il propose **Autoriser à chaque visite**, choisis-le) : il ne laisse aucune extension modifier des fichiers sans que tu l'aies vu.
 
-La page de mise à jour s'ouvre aussi depuis le popup, **Paramètres → Mises à jour**.
+La page de mise à jour s'ouvre aussi depuis le popup, avec le lien **Paramètres → Dossier des mises à jour**, pour changer de dossier quand tu veux.
 
 Sur **Brave**, l'accès aux dossiers est coupé par défaut : ouvre `brave://flags/#file-system-access-api`, mets **File System Access API** sur **Enabled** et relance Brave. Sans ça, la page le détecte et l'explique, et les mises à jour restent possibles à la main.
 

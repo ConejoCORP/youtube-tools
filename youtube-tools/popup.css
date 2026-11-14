@@ -328,5 +328,12 @@ input[type="text"]:focus { border-bottom-color: var(--accent); }
   font-size: 12px;
   line-height: 1.45;
 }
+/* Paramètres > « Rechercher une mise à jour » : discret, plein quand une version attend. */
+.reglages-maj { margin-top: 12px; }
+.reglages-maj .ghost { margin-top: 0; }
+.reglages-maj .ghost[disabled] { opacity: .6; cursor: progress; }
+.reglages-maj .ghost.is-dispo { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 700; }
+.reglages-maj .ghost.is-dispo:hover { background: var(--accent-hover); color: #fff; }
+.reglages-maj-etat { margin: 6px 0 0; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .reglages-pied { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 11px; }
 .reglages-lien { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
