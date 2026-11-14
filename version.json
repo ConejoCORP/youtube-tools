@@ -1,6 +1,6 @@
 {
-  "version": "3.11.0",
-  "ref": "52d068c2ab68c669a2592b8e100a2bbb6826ec05",
+  "version": "3.12.0",
+  "ref": "8051f67a32a425182e0a24f88c9f1e6127e8e7d5",
   "files": [
     "background.js",
     "capture.css",
@@ -10,11 +10,14 @@
     "content.css",
     "content.js",
     "gemini-writer.js",
+    "heure-video.js",
     "icons/icon128.png",
     "icons/icon16.png",
     "icons/icon32.png",
     "icons/icon48.png",
     "manifest.json",
+    "playlist-recherche.css",
+    "playlist-recherche.js",
     "popup.css",
     "popup.html",
     "popup.js",
@@ -22,8 +25,11 @@
     "rank-core.js",
     "rank.css",
     "rank.js",
+    "studio-heure.js",
+    "studio-page.js",
     "studio-retention.js",
     "studio-revenus.js",
+    "studio-similaire.js",
     "studio-tendance.js",
     "studio-top10.js",
     "studio.css",
@@ -38,6 +44,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Outils YouTube Studio : classement sur 10 avec onglets Vidéos / Shorts séparés sur le tableau de bord ; flèches de tendance à côté des vues (page Contenu) ; zoom à la molette dans le graphique de rétention, sur place ; option « Masquer les revenus ». Mise à jour automatique réparée : Windows Defender bloquait à tort l'ancien script de la page de mise à jour.",
-  "download": "https://github.com/StundZow/youtube-tools/releases/latest"
+  "notes": "Paramètres en cases cliquables (roue crantée). Nouveau : heure exacte de mise en ligne sous la vidéo, recherche dans les playlists, heure exacte au survol dans Studio, vidéo similaire de plusieurs Shorts d'un coup (seule fonction qui passe par ta session Studio, après confirmation). Le dépôt est maintenant ConejoCORP/youtube-tools.",
+  "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
