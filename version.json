@@ -1,6 +1,6 @@
 {
-  "version": "3.13.0",
-  "ref": "74147ae89a7c8ce397150225d5ff24720d746194",
+  "version": "3.13.1",
+  "ref": "4748ed1991f56ce51f06dda31d51c4a4457cd8de",
   "files": [
     "background.js",
     "capture.css",
@@ -44,6 +44,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Transcription : nouvelles colonnes multiplicateur et multiplicateur_source. Le multiplicateur vient de vidIQ quand son panneau l'affiche, sinon l'extension le calcule (vues / médiane des 9 vidéos précédentes de la chaîne, au même âge), avec la liste du classement sur 10.",
+  "notes": "Transcription : le multiplicateur est maintenant calculé aussi pour les vidéos anciennes, quand vidIQ affiche N/A. La vidéo est comparée aux vidéos de la chaîne les plus proches en âge (« calculé (approx.) »). Classement sur 10 : une vidéo ancienne ne fait plus relire toute la liste de la chaîne à chaque visite.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
