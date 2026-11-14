@@ -9,10 +9,10 @@
  * ou vivent les autres scripts de l'extension.
  *
  * Ce script ne fait QUE recopier quelques informations publiques dans un
- * attribut du document, ou rank.js (classement) et heure-video.js (heure de
- * mise en ligne) viennent les lire :
+ * attribut du document, ou rank.js (classement), heure-video.js (heure de
+ * mise en ligne), tags.js (tags) et transcript.js viennent les lire :
  *   id, chaine, titre, vues, date de publication, direct ou non, Short ou non,
- *   ainsi que la cle et la version d'API que la page utilise deja.
+ *   tags, ainsi que la cle et la version d'API que la page utilise deja.
  * Il n'emet aucune requete, ne lit aucun cookie et ne touche a rien d'autre.
  */
 
@@ -43,6 +43,8 @@
       published: (mf.liveBroadcastDetails && mf.liveBroadcastDetails.startTimestamp) || mf.publishDate || '',
       live: d.isLive === true || d.isUpcoming === true,
       short: mf.isShortsEligible === true,
+      // Les tags que le createur a saisis (absents s'il n'en a mis aucun).
+      tags: Array.isArray(d.keywords) ? d.keywords.filter((t) => typeof t === 'string') : [],
       key: get('INNERTUBE_API_KEY'),
       version: get('INNERTUBE_CLIENT_VERSION')
     });

@@ -30,6 +30,7 @@
     watchTime: true,          // heure exacte de mise en ligne apres la date, sous la video
     playlistSearch: true,     // champ de recherche en haut d une playlist
     publishTime: true,        // Studio : heure exacte de publication au survol d une date (Contenu)
+    videoTags: true,          // panneau des tags de la video, colonne de droite
     shortsRelated: true       // Studio : video similaire de plusieurs Shorts (seule fonction avec la session)
   };
 

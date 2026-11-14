@@ -65,10 +65,10 @@ const clic = (w, el) => el.dispatchEvent(new w.MouseEvent('click', { bubbles: tr
     const tuiles = () => Array.from(doc.querySelectorAll('#reglagesListe .tuile'));
     const sections = () => Array.from(doc.querySelectorAll('#reglagesListe .reglages-section')).map((s) => s.textContent);
     verifie('onglet YouTube par défaut', doc.querySelector('.site[data-site=youtube]').getAttribute('aria-selected') === 'true');
-    verifie('YouTube : 7 cases, en 2 sections', tuiles().length === 7 && sections().join('|') === 'Page de la vidéo|Partout sur YouTube', sections());
+    verifie('YouTube : 8 cases, en 2 sections', tuiles().length === 8 && sections().join('|') === 'Page de la vidéo|Partout sur YouTube', sections());
     const etat = () => Object.fromEntries(tuiles().map((t) => [t.dataset.cle, t.getAttribute('aria-checked')]));
     verifie('états par défaut : tout actif sauf « Enregistrer un fichier »',
-      JSON.stringify(etat()) === JSON.stringify({ transcriptButton: 'true', captureButton: 'true', rankBadge: 'true', watchTime: 'true', videosButton: 'true', playlistSearch: 'true', saveAsFile: 'false' }), etat());
+      JSON.stringify(etat()) === JSON.stringify({ transcriptButton: 'true', captureButton: 'true', rankBadge: 'true', watchTime: 'true', videoTags: 'true', videosButton: 'true', playlistSearch: 'true', saveAsFile: 'false' }), etat());
     verifie('chaque case : icône + nom, et c’est un bouton à bascule', tuiles().every((t) => t.querySelector('svg path') && t.querySelector('.tuile-nom').textContent && t.getAttribute('role') === 'switch'));
 
     const aide = doc.getElementById('reglagesAide');

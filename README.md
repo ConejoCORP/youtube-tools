@@ -37,6 +37,7 @@ Parce que ce n'est jamais comme ça qu'elle sera vue. Ce qui compte, c'est la li
 - 💾 **Export des vidéos d'une page** — depuis la barre du haut, sur toutes les pages YouTube
 - 🏆 **Classement sur 10** — où se situe la vidéo parmi les 10 dernières de sa chaîne, à âge égal
 - 🕒 **Heure exacte de mise en ligne** — sous la vidéo, juste après la date
+- 🏷️ **Tags de la vidéo** — ceux que le créateur a saisis, tout en bas de la description, copiables en un clic
 - 🔎 **Recherche dans une playlist** — un champ en haut de la playlist, qui fouille aussi les vidéos pas encore chargées
 - 🎬 **Outils YouTube Studio** — classement Vidéos / Shorts séparés, flèches de tendance à côté des vues, zoom dans la rétention, revenus masqués, heure exacte au survol, vidéo similaire de plusieurs Shorts d'un coup
 - 🌗 **Thème clair / sombre** — les boutons mesurent le fond de la page et s'y accordent, sans recharger
@@ -68,8 +69,8 @@ Volontairement **éphémère** : la carte n'apparaît qu'au clic, uniquement sur
 Copie toute la transcription dans le presse-papiers, métadonnées de la vidéo comprises :
 
 ```csv
-titre,chaine,debut,fin,debut_s,texte,date,date_iso,vues,vues_num,likes,multiplicateur,multiplicateur_source,duree,duree_s,url,id
-"Ma vidéo","Ma Chaîne","0:00","0:05","0","Première phrase","il y a 3 semaines","2026-08-16","1 659 225 vues","1659225","21816","1.6x","vidIQ","1:00:44","3644","https://…","lZGoJT4abos"
+titre,chaine,debut,fin,debut_s,texte,date,date_iso,vues,vues_num,likes,multiplicateur,multiplicateur_source,duree,duree_s,tags,url,id
+"Ma vidéo","Ma Chaîne","0:00","0:05","0","Première phrase","il y a 3 semaines","2026-08-16","1 659 225 vues","1659225","21816","1.6x","vidIQ","1:00:44","3644","minecraft, minecraft fr","https://…","lZGoJT4abos"
 ```
 
 `date_iso` est **toujours** une date absolue : une date relative pourrit, « il y a 9 mois » désignera autre chose dans trois mois. `vues_num` et `likes` reprennent les comptes exacts quand la page les donne. `duree_s` permet de trier et de calculer des densités.
@@ -132,6 +133,10 @@ Place de la vidéo parmi les 10 dernières de sa chaîne, **à âge égal** : le
 
 C'est la **seule** fonction de la page de lecture qui interroge YouTube — la liste des vidéos d'une chaîne n'est pas dans la page. Elle le fait **sans aucun cookie**, uniquement sur des données publiques, avec un cache de 6 h, et l'interrupteur du popup la coupe entièrement.
 
+### Tags de la vidéo (en bas de la description)
+
+YouTube n'affiche plus les tags d'une vidéo, mais il les envoie toujours avec la page. Ils s'affichent tout en bas du cadre de la description, qu'elle soit repliée ou dépliée, un par un. Un clic dans ce bloc ne déplie pas la description. Il donne aussi leur longueur comptée comme le fait YouTube Studio (« 491 / 500 caractères »), et un bouton **Copier** les met dans le presse-papiers, séparés par des virgules, prêts à coller dans le champ Tags de Studio. Les mêmes tags remplissent la colonne `tags` du CSV de la transcription. Son en-tête l'enroule ou le déroule, et ce choix est retenu. **Aucune requête**.
+
 ### Heure exacte de mise en ligne
 
 YouTube écrit la date d'une vidéo, jamais l'heure. Description ouverte, l'extension l'ajoute juste après : « 13 juin 2026 **à 13:00** », à l'heure de ton ordinateur. L'heure est déjà dans les données de la page : **aucune requête**.
@@ -170,6 +175,7 @@ La **roue crantée** en haut du popup ouvre l'écran des paramètres : une **cas
 | YouTube | **Bouton transcription** | affiche ou retire le **☰** à côté du J'aime |
 | YouTube | **Bouton capture d'écran** | affiche ou retire le **📷** du lecteur |
 | YouTube | **Classement sur 10** | affiche le panneau de la page de lecture — et coupe ses requêtes, ainsi que le multiplicateur calculé de la transcription |
+| YouTube | **Tags de la vidéo** | affiche ou retire les tags, en bas de la description |
 | YouTube | **Heure de mise en ligne** | ajoute ou retire l'heure après la date, sous la vidéo |
 | YouTube | **Export des vidéos** | affiche ou retire le **⤓** en haut de page |
 | YouTube | **Recherche dans les playlists** | affiche ou retire le champ de recherche des playlists |
@@ -263,6 +269,7 @@ youtube-tools/
 ├── rank-core.js     calcul du classement (sans DOM, testable sous Node)
 ├── rank-bridge.js   lecture des données de la vidéo (monde de la page)
 ├── rank.js/css      panneau de la colonne de droite
+├── tags.js/css      tags de la vidéo, en bas de la description
 ├── heure-video.js   heure exacte de mise en ligne, sous la vidéo
 ├── playlist-recherche.js/css  champ de recherche des playlists
 ├── studio-top10.js     Studio : classement sur 10, onglets Vidéos / Shorts

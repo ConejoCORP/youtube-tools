@@ -1,0 +1,138 @@
+/* YouTube Tools — tags de la vidéo, tout en bas du cadre de la description. */
+
+#yttools-tags-card {
+  box-sizing: border-box;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, .1);
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  font-family: "Roboto", "Arial", sans-serif;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  /* Le cadre replié affiche une main partout : pas dans le bloc. */
+  cursor: auto;
+  white-space: normal;
+}
+
+/* ---------------------------------------------------------------- en-tête */
+
+#yttools-tags-card .yttools-tg-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#yttools-tags-card .yttools-tg-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+#yttools-tags-card .yttools-tg-icon,
+#yttools-tags-card .yttools-tg-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+#yttools-tags-card .yttools-tg-icon svg,
+#yttools-tags-card .yttools-tg-chevron svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+#yttools-tags-card .yttools-tg-value {
+  color: var(--yt-spec-text-secondary, #606060);
+  font-variant-numeric: tabular-nums;
+}
+
+#yttools-tags-card .yttools-tg-chevron { transition: transform .15s ease; }
+
+#yttools-tags-card .yttools-tg-count {
+  color: var(--yt-spec-text-secondary, #606060);
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+#yttools-tags-card .yttools-tg-copy {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, .08);
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#yttools-tags-card .yttools-tg-copy:hover { background: rgba(0, 0, 0, .14); }
+#yttools-tags-card .yttools-tg-copy[hidden] { display: none; }
+
+/* Enroulé : seul l'en-tête reste, chevron tourné vers la droite. */
+#yttools-tags-card[data-collapsed="true"] .yttools-tg-body { display: none; }
+#yttools-tags-card[data-collapsed="true"] .yttools-tg-chevron { transform: rotate(-90deg); }
+
+/* ----------------------------------------------------------------- tags */
+
+#yttools-tags-card .yttools-tg-body { padding: 6px 0 2px; }
+
+#yttools-tags-card .yttools-tg-msg {
+  display: block;
+  color: var(--yt-spec-text-secondary, #606060);
+}
+
+#yttools-tags-card .yttools-tg-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#yttools-tags-card .yttools-tg-chip {
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .07);
+  word-break: break-word;
+  user-select: text;
+  cursor: text;
+}
+
+/* ---------- thème sombre ----------
+   `data-theme` est posé par le script après mesure du fond réel. */
+#yttools-tags-card[data-theme="dark"] {
+  border-top-color: rgba(255, 255, 255, .15);
+  color: var(--yt-spec-text-primary, #f1f1f1);
+}
+
+#yttools-tags-card[data-theme="dark"] .yttools-tg-value,
+#yttools-tags-card[data-theme="dark"] .yttools-tg-msg,
+#yttools-tags-card[data-theme="dark"] .yttools-tg-count {
+  color: var(--yt-spec-text-secondary, #aaa);
+}
+
+#yttools-tags-card[data-theme="dark"] .yttools-tg-chip { background: rgba(255, 255, 255, .1); }
+#yttools-tags-card[data-theme="dark"] .yttools-tg-copy { background: rgba(255, 255, 255, .12); }
+#yttools-tags-card[data-theme="dark"] .yttools-tg-copy:hover { background: rgba(255, 255, 255, .2); }
+
+/* Filet de sécurité si le script n'a pas encore mesuré : l'indice de YouTube. */
+html[dark] #yttools-tags-card:not([data-theme]) {
+  border-top-color: rgba(255, 255, 255, .15);
+  color: #f1f1f1;
+}

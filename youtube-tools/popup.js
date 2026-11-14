@@ -22,7 +22,8 @@ const SETTINGS_DEFAULTS = {
   watchTime: true,
   playlistSearch: true,
   publishTime: true,
-  shortsRelated: true
+  shortsRelated: true,
+  videoTags: true
 };
 let settings = { ...SETTINGS_DEFAULTS };
 
@@ -48,6 +49,9 @@ const REGLAGES = {
     { cle: 'watchTime', nom: 'Heure de mise en ligne',
       icone: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z',
       aide: "Description ouverte, l'heure exacte s'ajoute après la date : « 17 août 2026 à 18:00 ». Aucune requête." },
+    { cle: 'videoTags', nom: 'Tags de la vidéo',
+      icone: 'M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z',
+      aide: 'Tout en bas de la description, les tags que le créateur a mis, avec un bouton pour les copier. Aucune requête.' },
     { section: 'Partout sur YouTube' },
     { cle: 'videosButton', nom: 'Export des vidéos',
       icone: 'M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z',

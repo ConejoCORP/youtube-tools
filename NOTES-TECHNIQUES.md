@@ -217,6 +217,19 @@ Les idées viennent de **Better YouTube Studio** (SQUIDUU), relu pour l'occasion
 - **Vidéo similaire de plusieurs Shorts** (`studio-similaire.js` + `studio-page.js`). L'entrée est ajoutée au menu *Modifier* de la barre de sélection (la `tp-yt-paper-listbox` qui contient `TITLE` **et** `DESCRIPTION`), après `MONETIZATION`. Elle arrête la propagation de `mousedown`/`pointerdown`/`keydown`… pour que la liste de Studio ne la traite pas comme une des siennes, puis ferme le menu par un `Escape`. L'éditeur se pose en tête de `#editors`, et la barre reçoit `yttools-sim-edition`, qui masque les menus et boutons de Studio le temps de l'édition. La vidéo se choisit dans **le sélecteur de Studio lui-même** (`ytcp-video-pick-dialog`, créé à la volée, mêmes filtres que pour un seul Short) : c'est Studio qui charge la liste ; à défaut, un champ accepte un lien collé.
   L'enregistrement est la demande de Studio pour un seul Short, `POST /youtubei/v1/video_manager/metadata_update` avec `videoLinkageShortsAttribution.targetExternalVideoId` (`[id]`, ou `[]` pour retirer). Studio exige deux choses que la page ne donne pas d'emblée : un **contexte** contenant `request.sessionInfo.token` (absent de `ytcfg`, Studio l'ajoute à chacune de ses requêtes) et l'en-tête `Authorization: SAPISIDHASH horodatage_sha1(horodatage SAPISID origine)`. Le contexte est relevé sur les requêtes de Studio (`XMLHttpRequest.send`, `fetch`), **seulement quand `html.yttools-similaire` est posée**, c'est-à-dire sur l'onglet *Contenu > Shorts* avec la case active ; seul le dernier est gardé, en mémoire. Cocher un Short ou ouvrir le sélecteur suffit à en produire un. Le cookie n'est lu qu'au moment de signer. Les Shorts partent un par un, 600 ms d'écart ; sans contexte ou sans session, on s'arrête au premier au lieu d'attendre pour chacun. Rien n'est envoyé avant la confirmation, qui liste les Shorts concernés.
 
+## Les tags
+
+Ils viennent de `videoDetails.keywords`, dans les données du lecteur, que `rank-bridge.js` recopie avec le reste (champ `tags`). La balise `<meta name="keywords">` n'est pas une source fiable, pour deux raisons :
+
+- elle n'est écrite qu'au premier chargement, donc après une navigation interne elle décrit encore la vidéo d'avant ;
+- pour une vidéo sans tags, YouTube y met des mots génériques (« vidéo, partage, téléphone-appareil photo… ») qui ne viennent pas du créateur.
+
+**Placement** : le bloc est le dernier enfant de `#description-inner`, en dehors de `ytd-text-inline-expander`. Il est donc toujours visible en bas du cadre : sous « afficher plus » quand la description est repliée, sous « Moins » quand elle est dépliée. Si YouTube ajoute un bloc après lui, il se replace en dernier. Il passe par `moveGently`, comme les autres blocs de l'extension, pour ne pas entrer dans une bataille de position.
+
+Description repliée, un clic n'importe où dans le cadre la déplie. Les clics dans le bloc (plier, copier, sélectionner un tag) sont arrêtés à lui (`stopPropagation`). Vérifié sur la vraie page : cliquer un tag laisse la description repliée.
+
+**Longueur** : elle est comptée comme dans YouTube Studio pour sa limite de 500 caractères. On compte une virgule entre deux tags, et deux guillemets de plus pour un tag qui contient un espace.
+
 ## L'heure exacte sous la vidéo
 
 `rank-bridge.js` recopiait déjà `microformat.playerMicroformatRenderer.publishDate` (ou `liveBroadcastDetails.startTimestamp` pour un direct) : « 2026-06-13T04:00:21-07:00 ». `heure-video.js` le relit, vérifie que l'ID est celui de l'URL (le pont peut avoir une navigation de retard) et ajoute « à 13:00 » après le morceau de `#info` qui contient une année — donc seulement description ouverte, quand YouTube affiche la date et non « il y a 5 mois ». Un nombre de vues comme « 2025 vues » est écarté avec `RE.views`. Une date sans heure (ancien format) ne donne rien.

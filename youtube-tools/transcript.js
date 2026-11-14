@@ -714,10 +714,22 @@
     };
   }
 
+  /**
+   * Les tags de la video, separes par des virgules. rank-bridge.js les recopie
+   * depuis la page (videoDetails.keywords) : aucune requete. Vide si le pont
+   * porte encore la video precedente.
+   */
+  function tagsDuPont(id) {
+    let src = null;
+    try { src = JSON.parse(document.documentElement.getAttribute(SRC_ATTR) || 'null'); } catch { src = null; }
+    if (!src || src.id !== id || !Array.isArray(src.tags)) return '';
+    return src.tags.map((t) => clean(t)).filter(Boolean).join(', ');
+  }
+
   const COLUMNS = ['titre', 'chaine', 'debut', 'fin', 'debut_s', 'texte',
                    'date', 'date_iso', 'vues', 'vues_num', 'likes',
                    'multiplicateur', 'multiplicateur_source',
-                   'duree', 'duree_s', 'url', 'id'];
+                   'duree', 'duree_s', 'tags', 'url', 'id'];
 
   function toCsv(rows, meta) {
     const withHours = rows[rows.length - 1].start >= 3600;
@@ -803,7 +815,7 @@
     // Garde la transcription sous la main pour le bouton « Resumer »
     // (summary.js), qui apparait a cote une fois la copie faite. Elle est
     // rattachee a la video : changer de video la rend caduque.
-    const meta = { ...videoMeta(), ...(await multiplicateur()) };
+    const meta = { ...videoMeta(), ...(await multiplicateur()), tags: tagsDuPont(id) };
     TV.lastTranscript = { id, meta, rows };
 
     const { ok, file } = await TV.deliver(toCsv(rows, meta), fileName());

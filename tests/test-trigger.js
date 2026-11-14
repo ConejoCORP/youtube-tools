@@ -105,7 +105,8 @@ function page({ natifMarche = true, secondChance = false, vidiq = '', rang = nul
   if (rang) {
     doc.documentElement.setAttribute('data-yttools-rank-src', JSON.stringify({
       id: 'abc123XYZ_1', channel: 'UC' + 'x'.repeat(22), views: 1234,
-      published: '2026-11-01T10:00:00-07:00', key: 'cle', version: '2.0'
+      published: '2026-11-01T10:00:00-07:00', key: 'cle', version: '2.0',
+      tags: ['minecraft', 'minecraft fr']
     }));
     window.__yttoolsRank = {
       computeMultiplier: async (cur) => { appels.push(cur); return rang.reponse; }
@@ -182,6 +183,7 @@ async function clique(ctx, patience = 3000) {
     await clique(ctx);
     verifie('pas le 1.6x d\'une autre video', colonne(ctx, 'multiplicateur'), '2.3x');
     verifie('source', colonne(ctx, 'multiplicateur_source'), 'calculé');
+    verifie('colonne tags, depuis le pont', colonne(ctx, 'tags'), 'minecraft, minecraft fr');
     verifie('date de publication passee en millisecondes',
       ctx.appels[0] && ctx.appels[0].published, Date.parse('2026-11-01T10:00:00-07:00'));
   }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "YouTube Tools",
-  "version": "3.13.1",
-  "description": "Boîte à outils YouTube : aperçu de miniature dans le vrai feed, transcription, résumés par Gemini, export CSV, classement sur 10, heure exacte de mise en ligne, recherche dans les playlists et outils pour YouTube Studio.",
+  "version": "3.14.0",
+  "description": "Boîte à outils YouTube : aperçu de miniature dans le vrai feed, transcription, résumés par Gemini, export CSV, classement sur 10, heure exacte de mise en ligne, tags, recherche dans les playlists et outils pour YouTube Studio.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -46,6 +46,7 @@
         "capture.js",
         "rank-core.js",
         "rank.js",
+        "tags.js",
         "heure-video.js",
         "playlist-recherche.js"
       ],
@@ -56,6 +57,7 @@
         "videos.css",
         "capture.css",
         "rank.css",
+        "tags.css",
         "playlist-recherche.css"
       ],
       "run_at": "document_idle",
