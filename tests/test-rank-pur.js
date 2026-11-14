@@ -128,7 +128,29 @@ console.log('\n8. Multiplicateur depuis la liste en cache : aucune requete');
   const r = await C.computeMultiplier({ id: 'cur', channel: chaine, views: 4000, published: now - 48 * 3600e3 }, deps);
   verifie('statut', r.status, 'ok');
   verifie('requetes emises', requetes, 0);
+  verifie('pas approximatif quand la video est dans la liste', r.approx, undefined);
   verifie('direct en cours : rien', (await C.computeMultiplier({ live: true }, deps)).status, 'live');
+
+  // Video de 2023 absente de la liste lue (le cas « N/A » de vidIQ) : comparee
+  // aux videos de la liste les plus proches en age, toujours sans requete.
+  const vieille = await C.computeMultiplier({ id: 'vieille', channel: chaine, views: 6000, published: now - 3 * 8766 * 3600e3 }, deps);
+  verifie('video trop ancienne : statut', vieille.status, 'ok');
+  verifie('video trop ancienne : marquee approximative', vieille.approx, true);
+  verifie('video trop ancienne : comparee aux 4 de la liste', vieille.compared, 4);
+  verifie('toujours aucune requete', requetes, 0);
+  // Liste en cache depuis 20 min : une video ANCIENNE absente ne la fait pas
+  // recharger (avant : jusqu'a 20 requetes a chaque visite).
+  const chaine2 = 'UC' + 'z'.repeat(22);
+  memoire[`yttoolsRank:${chaine2}:video`] = JSON.stringify({ channel: chaine2, kind: 'video', at: now - 20 * 60e3, token: null, pages: 20, done: true,
+    items: ['a', 'b', 'c'].map((id, i) => ({ id, title: id, views: 1000 * (i + 1), ageHours: 5000 + i, fetchedAt: now - 20 * 60e3 })) });
+  const ancienne = await C.computeMultiplier({ id: 'old', channel: chaine2, views: 9000, published: now - 3 * 8766 * 3600e3 }, deps);
+  verifie('vieille video, cache de 20 min : calculee', ancienne.status, 'ok');
+  verifie('vieille video, cache de 20 min : aucune relecture', requetes, 0);
+
+  memoire[`yttoolsRank:${chaine}:short`] = JSON.stringify({ channel: chaine, kind: 'short', at: now, token: null, pages: 1, done: true,
+    items: ['s1', 's2', 's3'].map((id) => ({ id, title: id, views: 100, ageHours: null, fetchedAt: now })) });
+  const shortAbsent = await C.computeMultiplier({ id: 'z', channel: chaine, views: 10, short: true }, deps);
+  verifie('Short absent (pas d\'age dans la liste) : rien', shortAbsent.status, 'not-found');
   verifie('sans cle : rien', (await C.computeMultiplier({ id: 'cur', channel: chaine }, { ...deps, cfg: {} })).status, 'no-config');
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe — aucune requete emise'));

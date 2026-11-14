@@ -195,6 +195,11 @@ async function clique(ctx, patience = 3000) {
     await clique(ko);
     verifie('video absente de la liste : colonne vide', colonne(ko, 'multiplicateur'), '');
     verifie('la transcription est copiee quand meme', (ko.lire() || '').split('\r\n').length - 1, 3);
+    const vieille = page({ vidiq: VIDIQ('abc123XYZ_1').replace('1.6x', 'N/A'),
+                           rang: { reponse: { status: 'ok', value: 2.3, approx: true } } });
+    await clique(vieille);
+    verifie('vidIQ « N/A » : on calcule', colonne(vieille, 'multiplicateur'), '2.3x');
+    verifie('marque approximatif', colonne(vieille, 'multiplicateur_source'), 'calculé (approx.)');
   }
 
   console.log('\n6. « Classement sur 10 » coupe : aucune requete, donc aucun calcul');

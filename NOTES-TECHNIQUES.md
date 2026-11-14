@@ -61,6 +61,8 @@ D'abord celui de **vidIQ**. Son panneau est `#video-companion-root`, et la valeu
 Sinon, `computeMultiplier` (rank-core.js) divise les vues de la vidéo par la **médiane** des 9 précédentes, ramenées au même âge par la courbe du classement. On prend la médiane plutôt que la moyenne : un seul gros succès de la chaîne ne fait pas passer les autres vidéos pour des échecs.
 
 - Pas de seuil de 24 h comme pour le classement : vidIQ affiche une valeur dès la première heure.
+- La vidéo peut être trop ancienne pour la liste lue. Par exemple, une vidéo de 2023 sur une chaîne qui publie beaucoup, alors que les 20 pages lues (environ 600 vidéos) s'arrêtent à 2 ans et demi. vidIQ affiche alors « N/A ». Le calcul la compare aux 9 vidéos de la liste **les plus proches en âge**, donc les plus anciennes qu'on ait. C'est moins juste que ses vraies voisines, mais ça ne coûte aucune requête. Le CSV l'indique : `calculé (approx.)`.
+- Le clic lance le calcul en même temps que la lecture de la transcription, et celui-ci est plafonné à 15 s. vidIQ passe toujours devant, même s'il s'affiche pendant ce temps.
 - Le calcul passe par le même cache et le même verrou que le classement, sans relire les titres traduits. Quand le panneau du classement est déjà chargé, il ne fait donc aucune requête.
 - Si le réglage « Classement sur 10 » est coupé, il n'est pas lancé : ce réglage reste le seul qui autorise des requêtes vers YouTube.
 
@@ -123,6 +125,8 @@ La liste des vidéos d'une chaîne n'est pas dans la page : il faut la demander 
 - uniquement sur `/watch`, et seulement si le réglage est actif ;
 - cache de 6 h par chaîne, verrou pour ne pas charger deux fois les mêmes pages ;
 - adresse relative, donc **aucune permission supplémentaire**.
+
+Si une vidéo manque dans une liste en cache depuis plus de 10 min, la liste est relue une fois, au cas où la vidéo serait sortie entre-temps. Cette relecture n'a lieu que si la vidéo a pu être publiée **après** la lecture de la liste. Avant, une vidéo trop ancienne pour les 20 pages refaisait relire ces 20 pages à chaque visite, pour rien.
 
 Mesuré : la suite de tests complète fait **11 requêtes en 2,3 s**, dont 0 porteuse de cookie. En usage, 1 à 3 requêtes par classement, puis 0 pendant 6 h sur la même chaîne.
 

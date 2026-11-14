@@ -651,7 +651,9 @@
 
   /**
    * Notre propre multiplicateur (rank-core.js) : vues de la video / mediane des
-   * 9 precedentes de la chaine, ramenees au meme age.
+   * 9 precedentes de la chaine, ramenees au meme age. Pour une video trop
+   * ancienne pour la liste lue (vidIQ affiche alors « N/A »), les 9 videos les
+   * plus proches en age : source « calculé (approx.) ».
    *
    * Il reprend la liste du classement sur 10 et son cache : quand le panneau du
    * classement l'a deja chargee, aucune requete. Le reglage « Classement sur
@@ -660,11 +662,11 @@
    */
   async function multiplicateurCalcule(id) {
     const RK = window.__yttoolsRank;
-    if (!RK || !RK.computeMultiplier || !TV.settings.get().rankBadge) return '';
+    if (!RK || !RK.computeMultiplier || !TV.settings.get().rankBadge) return null;
 
     let src = null;
     try { src = JSON.parse(document.documentElement.getAttribute(SRC_ATTR) || 'null'); } catch { src = null; }
-    if (!src || src.id !== id) return '';          // pont pas encore a jour apres une navigation
+    if (!src || src.id !== id) return null;        // pont pas encore a jour apres une navigation
 
     const t = Date.parse(src.published || '');
     const r = await RK.computeMultiplier({ ...src, published: Number.isFinite(t) ? t : null }, {
@@ -676,19 +678,40 @@
       now: Date.now,
       storage: window.sessionStorage
     });
-    return r && r.status === 'ok' ? formatMultiplicateur(r.value) : '';
+    if (!r || r.status !== 'ok') return null;
+    return {
+      multiplicateur: formatMultiplicateur(r.value),
+      // Video absente de la liste (trop ancienne) : comparee aux plus proches en age.
+      multiplicateur_source: r.approx ? 'calculé (approx.)' : 'calculé'
+    };
   }
 
-  /** Celui de vidIQ s'il est affiche, sinon le notre, sinon rien. */
-  async function multiplicateur(id) {
-    const vidiq = multiplicateurVidiq(id);
-    if (vidiq) return { multiplicateur: vidiq, multiplicateur_source: 'vidIQ' };
-    try {
+  const SANS_MULTIPLICATEUR = { multiplicateur: '', multiplicateur_source: '' };
+
+  /**
+   * Lance la recherche du multiplicateur des le clic, en parallele de la
+   * lecture de la transcription : si la liste de la chaine n'est pas encore en
+   * cache, son chargement ne retarde pas la copie. Renvoie une fonction a
+   * appeler une fois la transcription lue.
+   *
+   * vidIQ passe toujours devant : deja affiche au clic, on ne calcule rien ;
+   * affiche entre-temps (son panneau met plus de dix secondes a se remplir),
+   * il l'emporte sur notre calcul.
+   */
+  function preparerMultiplicateur(id) {
+    const vidiqAuClic = multiplicateurVidiq(id);
+    if (vidiqAuClic) return async () => ({ multiplicateur: vidiqAuClic, multiplicateur_source: 'vidIQ' });
+
+    const calcul = multiplicateurCalcule(id).catch(() => null);
+    const debut = Date.now();
+    return async () => {
+      const vidiq = multiplicateurVidiq(id);
+      if (vidiq) return { multiplicateur: vidiq, multiplicateur_source: 'vidIQ' };
       // Plafonne : une liste lente ne doit pas retenir la copie de la transcription.
-      const calcule = await Promise.race([multiplicateurCalcule(id), sleep(8000).then(() => '')]);
-      if (calcule) return { multiplicateur: calcule, multiplicateur_source: 'calculé' };
-    } catch { /* liste illisible : colonne vide plutot que pas de copie */ }
-    return { multiplicateur: '', multiplicateur_source: '' };
+      const reste = Math.max(1000, 15000 - (Date.now() - debut));
+      const calcule = await Promise.race([calcul, sleep(reste).then(() => null)]);
+      return calcule || SANS_MULTIPLICATEUR;
+    };
   }
 
   const COLUMNS = ['titre', 'chaine', 'debut', 'fin', 'debut_s', 'texte',
@@ -765,6 +788,9 @@
     if (btn.dataset.state === 'loading') return;
     setState(btn, 'loading', '');
 
+    const id = new URLSearchParams(location.search).get('v') || '';
+    const multiplicateur = preparerMultiplicateur(id);
+
     let rows = null;
     try { rows = await fromPanel(); } catch (e) { console.warn('[YouTube Tools] panneau', e); }
 
@@ -777,8 +803,7 @@
     // Garde la transcription sous la main pour le bouton « Resumer »
     // (summary.js), qui apparait a cote une fois la copie faite. Elle est
     // rattachee a la video : changer de video la rend caduque.
-    const id = new URLSearchParams(location.search).get('v') || '';
-    const meta = { ...videoMeta(), ...(await multiplicateur(id)) };
+    const meta = { ...videoMeta(), ...(await multiplicateur()) };
     TV.lastTranscript = { id, meta, rows };
 
     const { ok, file } = await TV.deliver(toCsv(rows, meta), fileName());

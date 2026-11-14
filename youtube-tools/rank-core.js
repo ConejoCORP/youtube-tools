@@ -318,7 +318,11 @@
     let st = getState(current.channel, kind, deps);
     let found = await findWithHistory(st, current.id, deps);
     // Video recente absente d'une liste en cache : on recharge la liste une fois.
-    if (!found && deps.now() - st.at > STALE_MS) {
+    // Seulement si elle a pu sortir APRES la lecture de la liste (1 h de marge) :
+    // une video de 2023 absente des ~600 lues n'y sera pas davantage, et la
+    // recharger coutait jusqu'a MAX_PAGES requetes a chaque visite.
+    const publieeApres = current.published == null || current.published > st.at - 3600e3;
+    if (!found && publieeApres && deps.now() - st.at > STALE_MS) {
       st = resetState(current.channel, kind, deps);
       found = await findWithHistory(st, current.id, deps);
     }
@@ -349,11 +353,33 @@
   }
 
   /**
+   * Repli quand la video n'est pas dans la liste lue : les videos de la liste
+   * dont l'age est le plus proche du sien.
+   *
+   * Cas typique : une video de 2023 sur une chaine qui publie beaucoup. Les
+   * MAX_PAGES pages (~600 videos) s'arretent avant elle, et vidIQ affiche
+   * « N/A ». Les plus proches sont alors les plus anciennes de la liste : moins
+   * juste que ses vraies voisines, mais sans aucune requete de plus.
+   * Videos seulement : la liste ne donne pas l'age des Shorts.
+   */
+  function nearest(items, current, kind, now) {
+    const curAge = ageOf(current, now);
+    if (kind !== 'video' || curAge == null) return [];
+    return items
+      .filter((o) => o.id !== current.id && o.views != null && o.ageHours != null)
+      .map((o) => ({ o, ecart: Math.abs(o.ageHours + (now - o.fetchedAt) / 3600e3 - curAge) }))
+      .sort((a, b) => a.ecart - b.ecart)
+      .slice(0, COMPARED)
+      .map((x) => x.o);
+  }
+
+  /**
    * Le multiplicateur de la video (voir multiplier). Meme liste et meme cache
    * que le classement : si le panneau du classement l'a deja chargee, aucune
    * requete. Et aucune relecture des titres traduits, inutiles ici.
    *
-   * Statuts : ok (+ value, compared) | live | not-found | not-enough | no-channel | no-config
+   * Statuts : ok (+ value, compared, approx) | live | not-found | not-enough | no-channel | no-config
+   * `approx` : video absente de la liste, comparee aux plus proches en age (voir nearest).
    */
   async function computeMultiplier(current, deps) {
     const bloque = precheck(current, deps);
@@ -361,10 +387,15 @@
     const kind = current.short ? 'short' : 'video';
 
     return withLock(keyOf(current.channel, kind), async () => {
-      const { found } = await loadFound(current, kind, deps);
-      if (!found) return { status: 'not-found' };
-      if (found.older.length < MIN_OLDER) return { status: 'not-enough' };
-      return multiplier(current, found, kind, deps.now());
+      const { st, found } = await loadFound(current, kind, deps);
+      if (found) {
+        if (found.older.length < MIN_OLDER) return { status: 'not-enough' };
+        return multiplier(current, found, kind, deps.now());
+      }
+      const proches = nearest(st.items, current, kind, deps.now());
+      if (proches.length < MIN_OLDER) return { status: 'not-found' };
+      const r = multiplier(current, { target: {}, older: proches }, kind, deps.now());
+      return r.status === 'ok' ? { ...r, approx: true } : r;
     });
   }
 

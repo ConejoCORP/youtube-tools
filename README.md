@@ -77,7 +77,8 @@ titre,chaine,debut,fin,debut_s,texte,date,date_iso,vues,vues_num,likes,multiplic
 `multiplicateur` dit combien de fois mieux (ou moins bien) que d'habitude la vidéo marche pour sa chaîne. `multiplicateur_source` dit d'où il vient :
 
 - `vidIQ` : celui que **vidIQ** affiche sous « Outlier », si l'extension est installée et que son panneau est chargé ;
-- `calculé` : sinon, l'extension le calcule elle-même. Ce sont les vues de la vidéo divisées par la **médiane** de ses 9 précédentes, ramenées **au même âge**. Le calcul utilise la même liste que le classement sur 10, donc aucune requête de plus quand le panneau du classement l'a déjà chargée. Les valeurs sont proches de celles de vidIQ, sans être identiques : 0.9x contre 1.2x, 1.2x contre 1.6x, 2.2x contre 1.8x sur trois vidéos testées ;
+- `calculé` : sinon (pas de vidIQ, panneau pas encore chargé, ou « N/A »), l'extension le calcule elle-même. Ce sont les vues de la vidéo divisées par la **médiane** de ses 9 précédentes, ramenées **au même âge**. Le calcul utilise la même liste que le classement sur 10, donc aucune requête de plus quand le panneau du classement l'a déjà chargée. Les valeurs sont proches de celles de vidIQ, sans être identiques : 0.9x contre 1.2x, 1.2x contre 1.6x, 2.2x contre 1.8x sur trois vidéos testées ;
+- `calculé (approx.)` : la vidéo est trop ancienne pour la liste que lit l'extension (environ 600 vidéos). C'est le cas où vidIQ affiche « N/A ». Elle est alors comparée aux 9 vidéos de la liste les plus proches d'elle en âge, sans requête de plus ;
 - vide : ni l'un ni l'autre, par exemple un direct en cours, ou le réglage **Classement sur 10** coupé, puisque c'est lui qui autorise les requêtes vers YouTube.
 
 ### Résumé par Gemini (bouton ✨ Résumer, à côté du ☰)
