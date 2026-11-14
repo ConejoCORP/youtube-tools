@@ -38,10 +38,16 @@
   /**
    * Le morceau de texte qui porte la date absolue : celui qui contient une
    * annee. « il y a 3 jours » (description fermee) n'en a pas : rien a faire.
+   *
+   * Deux formes selon la video : des <span> (« 1 659 225 vues », « 17 août
+   * 2026 »), ou — video recente, vues dans le compteur anime a part — la date
+   * seule, en texte nu dans #info. On regarde donc tous les noeuds, pas
+   * seulement les balises.
    */
   function morceauDate(info) {
-    return Array.from(info.children).find((s) => !s.classList.contains(CLS) &&
-      /(?:^|\D)(?:19|20)\d{2}(?:\D|$)/.test(s.textContent) && !TV.RE.views.test(s.textContent)) || null;
+    return Array.from(info.childNodes).find((n) =>
+      (n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && !n.classList.contains(CLS))) &&
+      /(?:^|\D)(?:19|20)\d{2}(?:\D|$)/.test(n.textContent) && !TV.RE.views.test(n.textContent)) || null;
   }
 
   function maj() {
@@ -53,7 +59,7 @@
     const cible = d && morceauDate(info);
     if (!cible) { actuel?.remove(); return; }
     const txt = suffixe(d, document.documentElement.lang);
-    if (actuel && actuel.textContent === txt && actuel.previousElementSibling === cible) return;
+    if (actuel && actuel.textContent === txt && actuel.previousSibling === cible) return;
     actuel?.remove();
     const s = document.createElement('span');
     s.className = CLS;

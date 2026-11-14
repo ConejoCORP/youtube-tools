@@ -92,6 +92,23 @@ const source = (doc, o) => doc.documentElement.setAttribute('data-yttools-rank-s
     await sleep(50);
     verifie('« 2025 vues » n’est pas pris pour une date', v.doc.querySelector('.yttools-heure')?.previousElementSibling.textContent === '17 août 2026');
 
+    // Video recente (releve du 14 nov. 2026) : vues dans le compteur anime,
+    // date en texte nu dans #info, sans <span>.
+    const NU = `
+      <ytd-watch-metadata><ytd-watch-info-text id="ytd-watch-info-text" detailed><div id="info-container">
+        <div id="view-count" aria-label="67 822 vues"><yt-animated-rolling-number></yt-animated-rolling-number></div>
+        <div id="date-text"></div>
+        <yt-formatted-string id="info">14 nov. 2026</yt-formatted-string>
+      </div></ytd-watch-info-text></ytd-watch-metadata>`;
+    const nu = page('https://www.youtube.com/watch?v=lZGoJT4abos', NU, ['heure-video.js']);
+    source(nu.doc, { published: '2026-11-14T04:30:25-08:00' });
+    await sleep(50);
+    const infoNu = nu.doc.querySelector('#info');
+    const hNu = new Date('2026-11-14T04:30:25-08:00').toLocaleTimeString('fr', { hour: '2-digit', minute: '2-digit' });
+    verifie('date en texte nu (vidéo récente) : « 14 nov. 2026 à hh:mm »', infoNu.textContent === `14 nov. 2026 à ${hNu}`, infoNu.textContent);
+    await sleep(1100);
+    verifie('… posée une seule fois, même après la vérification périodique', nu.doc.querySelectorAll('.yttools-heure').length === 1);
+
     const en = page('https://www.youtube.com/watch?v=lZGoJT4abos', INFO('Aug 17, 2026'), ['heure-video.js']);
     en.doc.documentElement.lang = 'en';
     source(en.doc, { published: pub });
