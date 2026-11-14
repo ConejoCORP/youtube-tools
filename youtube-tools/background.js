@@ -137,4 +137,13 @@ async function pastilleMaj() {
 }
 
 chrome.runtime.onStartup.addListener(() => { pastilleMaj(); });
-chrome.runtime.onInstalled.addListener(() => { pastilleMaj(); });
+chrome.runtime.onInstalled.addListener(async (details) => {
+  pastilleMaj();
+  // Premiere installation depuis un dossier : on fait designer ce dossier tout
+  // de suite, pendant qu'on sait encore ou on vient de le decompresser. Les
+  // mises a jour s'y installeront ensuite sans le redemander. (Recharger
+  // l'extension donne `update`, pas `install` : la page ne revient pas.)
+  if (details && details.reason === 'install' && await self.__yttoolsUpdate.estDossierLocal()) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('update.html?bienvenue=1') });
+  }
+});

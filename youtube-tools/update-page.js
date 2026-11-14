@@ -21,9 +21,16 @@
     notes: $('notes'),
     bouton: $('installer'),
     suivi: $('progres'),
-    manuel: $('manuel')
+    manuel: $('manuel'),
+    bienvenue: $('bienvenue'),
+    dossierEtat: $('dossierEtat'),
+    choisir: $('choisirDossier'),
+    ouEstIl: $('ouEstIl')
   };
   let annonce = null;                       // derniere version annoncee par GitHub
+  // Ouverte par le service worker juste apres l'installation (update.html?bienvenue=1).
+  const accueil = new URLSearchParams(location.search).has('bienvenue');
+  ui.bienvenue.hidden = !accueil;
 
   // Meme theme que le popup.
   chrome.storage.local.get('yttools')
@@ -72,6 +79,39 @@
   });
 
   ui.manuel.addEventListener('click', () => chrome.tabs.create({ url: U.RELEASES_URL }));
+
+  /* ------------------------------------------------- dossier de l'extension */
+
+  async function majDossier() {
+    const nom = await U.dossierMemorise().catch(() => null);
+    ui.dossierEtat.textContent = nom
+      ? `Enregistré : « ${nom} ». Les mises à jour s'y installent sans que tu aies à le chercher.`
+      : 'Pas encore choisi : il te sera demandé à la première mise à jour.';
+    ui.choisir.textContent = nom ? 'Choisir un autre dossier' : 'Choisir le dossier';
+    // A l'accueil, c'est l'action principale de la page.
+    ui.choisir.className = accueil && !nom ? 'cta' : 'ghost';
+  }
+
+  ui.choisir.addEventListener('click', async () => {
+    ui.choisir.disabled = true;
+    try {
+      const d = await U.choisirDossier();
+      suivi(`C'est noté : les mises à jour iront dans « ${d.name} ».`);
+    } catch (e) {
+      const nom = e && e.name;
+      if (nom === 'AbortError' || nom === 'NotAllowedError') suivi('Aucun dossier choisi.');
+      else suivi(`${(e && e.message) || e}`, true);
+    } finally {
+      ui.choisir.disabled = false;
+      majDossier();
+    }
+  });
+
+  // La page des extensions de Chrome affiche le chemin complet (« Chargée
+  // depuis »), que l'extension elle-meme ne peut pas lire.
+  ui.ouEstIl.addEventListener('click', () => chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }));
+
+  majDossier();
 
   // Le dernier resultat connu tout de suite, puis celui de GitHub.
   U.dernierConnu().then((info) => { if (info) afficher(info); }).catch(() => {});

@@ -45,12 +45,13 @@ Parce que ce n'est jamais comme ça qu'elle sera vue. Ce qui compte, c'est la li
 
 ## Prise en main
 
-1. [**Télécharge `youtube-tools.zip`**](https://github.com/ConejoCORP/youtube-tools/releases/latest/download/youtube-tools.zip) et décompresse-le.
+1. [**Télécharge `youtube-tools.zip`**](https://github.com/ConejoCORP/youtube-tools/releases/latest/download/youtube-tools.zip) et décompresse-le **là où il restera** (pas dans Téléchargements, qu'on vide un jour ou l'autre) : par exemple `Documents\youtube-tools`.
 2. Ouvre `chrome://extensions` et active le **Mode développeur** en haut à droite.
 3. **Charger l'extension non empaquetée** → sélectionne le dossier `youtube-tools` obtenu.
-4. Épingle l'extension dans la barre d'outils.
+4. Une page **Bienvenue** s'ouvre : clique **Choisir le dossier** et désigne ce même dossier `youtube-tools`. C'est le moment, tu sais encore où il est.
+5. Épingle l'extension dans la barre d'outils.
 
-Ensuite, plus besoin de retélécharger : quand une nouvelle version sort, une pastille **MAJ** apparaît sur l'icône et le popup propose **Mettre à jour**. La première fois, Chrome te demande de désigner ce même dossier `youtube-tools` ; les fois suivantes, c'est automatique.
+Ensuite, plus besoin de retélécharger ni de chercher le dossier : quand une nouvelle version sort, une pastille **MAJ** apparaît sur l'icône et le popup propose **Mettre à jour**. L'extension s'installe dans le dossier mémorisé.
 
 *(Sur Edge, Brave ou Opera : `edge://extensions`, `brave://extensions`, etc. — la marche à suivre est identique.)*
 
@@ -199,7 +200,9 @@ Au démarrage du navigateur et à chaque ouverture du popup, l'extension lit [`v
 2. **Mettre à jour** ouvre une page dédiée, qui montre les nouveautés ;
 3. **Mettre à jour maintenant** télécharge tous les fichiers, les écrit dans le dossier de l'extension, puis la recharge. Rafraîchis ensuite tes onglets YouTube (F5).
 
-Aucune API ne permet à une extension de réécrire ses propres fichiers : on passe par l'accès aux fichiers du navigateur. La **première fois**, tu désignes le dossier `youtube-tools` (celui qui contient `manifest.json`) et tu autorises la modification. L'autorisation est mémorisée.
+Aucune API ne permet à une extension de réécrire ses propres fichiers : on passe par l'accès aux fichiers du navigateur. Il faut donc lui montrer **une fois** le dossier `youtube-tools` (celui qui contient `manifest.json`) : dès l'installation, sur la page **Bienvenue**, ou à la première mise à jour si tu l'as passée. Il est ensuite mémorisé ; la page de mise à jour dit lequel et permet d'en choisir un autre. Chrome peut encore te demander de **confirmer l'accès** d'un clic (s'il propose **Autoriser à chaque visite**, choisis-le) : il ne laisse aucune extension modifier des fichiers sans que tu l'aies vu.
+
+Tu as oublié où est le dossier ? Le lien **Voir son emplacement** de la page de mise à jour ouvre la fiche de l'extension dans `chrome://extensions` : le chemin complet y est écrit, à « Chargée depuis ».
 
 Garde-fous : tout est téléchargé **avant** d'écrire quoi que ce soit (une coupure réseau ne laisse pas l'extension à moitié à jour), seuls les fichiers qui ont **changé** sont réécrits, le dossier choisi doit bien être celui de YouTube Tools, et la seule adresse contactée est `raw.githubusercontent.com`, sans cookie. Si un fichier ne peut pas être écrit (un antivirus qui le bloque, par exemple), les autres le sont quand même, la page dit lequel, et la nouvelle version n'est pas annoncée tant que tout n'est pas en place. Ça ne concerne que l'installation « non empaquetée » décrite plus haut. Mécanisme repris de [youtube-ad-tool](https://github.com/Slipers/youtube-ad-tool).
 

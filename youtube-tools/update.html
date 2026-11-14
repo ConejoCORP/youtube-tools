@@ -9,17 +9,33 @@
 <body class="page-maj">
   <main class="card">
     <h1 class="title"><span class="eyes">👀</span> YouTube Tools</h1>
+
+    <section id="bienvenue" class="maj-bienvenue" hidden>
+      <p class="maj-etat">Bienvenue ! YouTube Tools est installé.</p>
+      <p>
+        Dernière étape, pour que les mises à jour se fassent en un clic :
+        montre à l'extension le dossier où tu viens de la décompresser
+        (celui qui contient <code>manifest.json</code>). Tu n'auras plus jamais à le chercher.
+      </p>
+    </section>
+
     <p id="etat" class="maj-etat">Vérification…</p>
     <p id="notes" class="maj-notes" hidden></p>
 
     <button id="installer" class="cta" type="button" hidden>Mettre à jour maintenant</button>
     <p id="progres" class="maj-progres" role="status" hidden></p>
 
-    <p class="hint">
-      La première fois, Chrome te demande de choisir le dossier de l'extension
-      (celui qui contient <code>manifest.json</code>) et l'autorisation de le modifier.
-      Ensuite, c'est automatique.
-    </p>
+    <section class="maj-dossier" aria-labelledby="dossierTitre">
+      <h2 id="dossierTitre">Dossier de l'extension</h2>
+      <p id="dossierEtat" class="maj-dossier-etat">…</p>
+      <button id="choisirDossier" class="ghost" type="button">Choisir le dossier</button>
+      <p class="hint">
+        Tu ne sais plus où il est ?
+        <button id="ouEstIl" class="maj-lien" type="button">Voir son emplacement</button> :
+        Chrome l'écrit sous YouTube Tools, à « Chargée depuis ».
+      </p>
+    </section>
+
     <button id="manuel" class="ghost" type="button">Télécharger à la main sur GitHub</button>
   </main>
   <script src="update-core.js"></script>

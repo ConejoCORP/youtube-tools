@@ -128,6 +128,30 @@
     }
   }
 
+  /**
+   * Nom du dossier deja memorise (« youtube-tools »), ou null. Ne demande
+   * aucune autorisation : sert seulement a dire a l'utilisateur ou on en est.
+   */
+  async function dossierMemorise() {
+    const garde = await handleMemorise();
+    return garde && garde.name ? garde.name : null;
+  }
+
+  /**
+   * Fait designer le dossier de l'extension et le memorise, sans rien
+   * installer. Propose des l'installation : a ce moment-la, on sait encore ou
+   * l'on vient de decompresser l'extension.
+   */
+  async function choisirDossier() {
+    if (!global.showDirectoryPicker) throw new Error("ce navigateur ne permet pas d'écrire des fichiers");
+    const choisi = await global.showDirectoryPicker({ mode: 'readwrite', id: 'yttools' });
+    if (!(await estLeBonDossier(choisi))) {
+      throw new Error("ce dossier n'est pas celui de YouTube Tools : choisis celui où se trouve manifest.json");
+    }
+    await memoriser(choisi);
+    return choisi;
+  }
+
   async function dossier(progres) {
     const garde = await handleMemorise();
     if (garde) {
@@ -135,12 +159,7 @@
       if (perm === 'granted' && (await estLeBonDossier(garde))) return garde;
     }
     progres("Choisis le dossier de l'extension (celui qui contient manifest.json)…");
-    const choisi = await global.showDirectoryPicker({ mode: 'readwrite', id: 'yttools' });
-    if (!(await estLeBonDossier(choisi))) {
-      throw new Error("ce dossier n'est pas celui de YouTube Tools : choisis celui où se trouve manifest.json");
-    }
-    await memoriser(choisi);
-    return choisi;
+    return choisirDossier();
   }
 
   /** « icons/icon16.png » -> handle de fichier, en creant les sous-dossiers. */
@@ -227,6 +246,7 @@
   }
 
   global.__yttoolsUpdate = {
-    RELEASES_URL, comparer, installee, estDossierLocal, verifier, dernierConnu, installer, cheminSur
+    RELEASES_URL, comparer, installee, estDossierLocal, verifier, dernierConnu, installer, cheminSur,
+    dossierMemorise, choisirDossier
   };
 })(typeof self !== 'undefined' ? self : globalThis);

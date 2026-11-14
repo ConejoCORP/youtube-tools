@@ -31,6 +31,29 @@ body.page-maj {
 }
 
 .maj-progres { margin: 10px 0 0; color: var(--muted); line-height: 1.45; }
+
+.maj-bienvenue { margin: 0 0 18px; line-height: 1.45; }
+.maj-bienvenue p { margin: 0 0 8px; }
+
+.maj-dossier {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.maj-dossier h2 { margin: 0 0 6px; font-size: 14px; }
+.maj-dossier-etat { margin: 0; line-height: 1.45; }
+.maj-dossier .cta { margin-top: 12px; }
+
+.maj-lien {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .maj-progres.is-err { color: #d93025; }
 
 /* ---------- bandeau dans le popup ---------- */

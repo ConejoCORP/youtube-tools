@@ -234,6 +234,32 @@ const bonDossier = (journal, extra = {}, bloques = []) =>
     verifie('manifest.json PAS ecrit : la version n\'est pas annoncee a tort', !e.journal.includes('manifest.json'), e.journal);
   }
 
+  console.log('\n9. Dossier choisi dès l\'installation (page d\'accueil)');
+  {
+    const e = environnement({ distant: DISTANT });
+    verifie('au départ : aucun dossier mémorisé', (await e.U.dossierMemorise()) === null);
+
+    e.choisir(dossier({ 'manifest.json': JSON.stringify({ name: 'Autre extension' }) }, e.journal));
+    let err = null;
+    try { await e.U.choisirDossier(); } catch (x) { err = x; }
+    verifie('mauvais dossier refusé, rien de mémorisé', err && /pas celui de YouTube Tools/.test(err.message) && (await e.U.dossierMemorise()) === null);
+
+    const d = bonDossier(e.journal);
+    d.name = 'youtube-tools';
+    e.choisir(d);
+    await e.U.choisirDossier();
+    verifie('bon dossier : mémorisé, son nom affichable', (await e.U.dossierMemorise()) === 'youtube-tools');
+    verifie('choisir le dossier n’écrit rien', e.journal.length === 0, e.journal);
+
+    // Plus tard, la mise a jour : plus aucune fenetre de choix.
+    const avant = e.ouvertures();
+    e.choisir(null);
+    const info = await e.U.verifier();
+    await e.U.installer(info, () => {});
+    verifie('mise à jour suivante : directement dans ce dossier, sans le redemander',
+      e.ouvertures() === avant && e.journal.includes('manifest.json'), { fenetres: e.ouvertures() - avant, ecrits: e.journal });
+  }
+
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));
   process.exit(echecs ? 1 : 0);
 })();

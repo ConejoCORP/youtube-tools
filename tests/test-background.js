@@ -16,7 +16,7 @@ const verifie = (nom, ok, detail) => {
 };
 
 /** urlChargee : ce que tabs.get renvoie une fois charge (null = page de connexion). */
-function monde({ urlChargee = 'https://gemini.google.com/app' } = {}) {
+function monde({ urlChargee = 'https://gemini.google.com/app', installType = 'development' } = {}) {
   const journal = [];
   const onMessage = [];
   const onConnect = new Set();
@@ -31,9 +31,10 @@ function monde({ urlChargee = 'https://gemini.google.com/app' } = {}) {
       onConnect: { addListener: (fn) => onConnect.add(fn), removeListener: (fn) => onConnect.delete(fn) },
       onStartup: { addListener: (fn) => demarrage.push(fn) },
       onInstalled: { addListener: (fn) => demarrage.push(fn) },
-      getManifest: () => ({ version: '3.8.0' })
+      getManifest: () => ({ version: '3.8.0' }),
+      getURL: (p) => p
     },
-    management: { getSelf: async () => ({ installType: 'development' }) },
+    management: { getSelf: async () => ({ installType }) },
     storage: { local: { get: async () => ({}), set: async () => {} } },
     action: {
       setBadgeText: async (o) => { badge.texte = o.text; },
@@ -48,7 +49,8 @@ function monde({ urlChargee = 'https://gemini.google.com/app' } = {}) {
     },
     tabs: {
       get: async () => ({ status: 'complete', url: urlChargee || undefined }),
-      query: async () => [{ id: GEMINI_TAB }]
+      query: async () => [{ id: GEMINI_TAB }],
+      create: async (o) => { journal.push(['onglet', o.url]); return { id: 5 }; }
     },
     scripting: {
       executeScript: async (o) => { journal.push(['inject', o.target.tabId, o.files]); return [{}]; }
@@ -103,6 +105,20 @@ function monde({ urlChargee = 'https://gemini.google.com/app' } = {}) {
     verifie('une seule requete, vers GitHub, sans cookie',
       m.reseau.length === 1 && m.reseau[0].url.startsWith('https://raw.githubusercontent.com/ConejoCORP/youtube-tools/main/version.json')
       && m.reseau[0].o.credentials === 'omit', m.reseau);
+  }
+
+  console.log('\n0 bis. Premiere installation : choisir le dossier tout de suite');
+  {
+    const onglets = (m) => m.journal.filter((e) => e[0] === 'onglet').map((e) => e[1]);
+    const m = monde();
+    await m.demarrage[1]({ reason: 'install' });
+    verifie('installation depuis un dossier : page d’accueil ouverte', JSON.stringify(onglets(m)) === JSON.stringify(['update.html?bienvenue=1']), onglets(m));
+    const r = monde();
+    await r.demarrage[1]({ reason: 'update' });
+    verifie('rechargement ou mise à jour : rien', onglets(r).length === 0);
+    const b = monde({ installType: 'normal' });
+    await b.demarrage[1]({ reason: 'install' });
+    verifie('installée depuis une boutique : rien (pas de dossier)', onglets(b).length === 0);
   }
 
   console.log('\n1. Deroulement normal');
