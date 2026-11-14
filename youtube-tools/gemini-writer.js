@@ -167,15 +167,19 @@
   function blocDeLigne(ligne) {
     const t = ligne.trim();
     if (!t) return null;
-    const h = t.match(/^#{1,6}\s+(.*)$/);
-    if (h) return { type: 'h', text: clean(h[1].replace(/\*\*/g, '')) };
+    const h = t.match(/^(#{1,6})\s+(.*)$/);
+    if (h) return { type: 'h', level: h[1].length, text: clean(h[2].replace(/\*\*/g, '')) };
     const li = t.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
-    if (li) return { type: 'li', text: clean(li[1].replace(/\*\*/g, '')) };
+    // Une puce indentee est une sous-puce : le resume en chapitres s'en sert.
+    const retrait = (ligne.match(/^\s*/) || [''])[0].replace(/\t/g, '    ').length;
+    if (li) return { type: 'li', depth: retrait >= 2 ? 1 : 0, text: clean(li[1].replace(/\*\*/g, '')) };
     return { type: 'p', text: clean(t.replace(/\*\*/g, '')) };
   }
 
   /**
-   * La reponse en blocs { type: 'h' | 'p' | 'li', text }.
+   * La reponse en blocs { type: 'h' | 'p' | 'li', text }, plus `level` pour un
+   * titre (1 a 6, 0 pour un paragraphe tout en gras) et `depth` pour une puce
+   * (0, ou 1 et plus pour une sous-puce).
    *
    * On lit la STRUCTURE rendue par Gemini plutot que son texte a plat : un
    * titre « ## Points cles » devient un <h2> dont le texte ne garde aucun
@@ -192,31 +196,31 @@
     const blocs = [];
     const pousse = (b) => { if (b && b.text) blocs.push(b); };
 
-    const parcours = (el) => {
+    const parcours = (el, depth = 0) => {
       for (const n of Array.from(el.children)) {
         const tag = n.tagName;
         if (/^H[1-6]$/.test(tag)) {
-          pousse({ type: 'h', text: clean(n.textContent) });
+          pousse({ type: 'h', level: Number(tag[1]), text: clean(n.textContent) });
         } else if (tag === 'P') {
           // Un paragraphe entierement en gras fait office de titre.
           const seul = n.children.length === 1 && /^(STRONG|B)$/.test(n.children[0].tagName) &&
                        clean(n.children[0].textContent) === clean(n.textContent);
-          pousse({ type: seul ? 'h' : 'p', text: clean(n.textContent) });
+          pousse(seul ? { type: 'h', level: 0, text: clean(n.textContent) } : { type: 'p', text: clean(n.textContent) });
         } else if (tag === 'UL' || tag === 'OL') {
           for (const li of Array.from(n.children)) {
             if (li.tagName !== 'LI') continue;
             const copie = li.cloneNode(true);
             copie.querySelectorAll('ul, ol').forEach((x) => x.remove());
-            pousse({ type: 'li', text: clean(copie.textContent) });
+            pousse({ type: 'li', depth, text: clean(copie.textContent) });
             Array.from(li.children).filter((c) => /^(UL|OL)$/.test(c.tagName))
-              .forEach((sous) => parcours({ children: [sous] }));
+              .forEach((sous) => parcours({ children: [sous] }, depth + 1));
           }
         } else if (tag === 'PRE') {
           (n.textContent || '').split('\n').map(blocDeLigne).forEach(pousse);
         } else if (tag === 'HR' || tag === 'TABLE') {
           // Rien d'utile pour un resume : on passe.
         } else {
-          parcours(n);
+          parcours(n, depth);
         }
       }
     };

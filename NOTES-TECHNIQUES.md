@@ -149,7 +149,7 @@ Repris de **Google More** (`tools/gemini-rewrite/`), qui pilote déjà la même 
 - **La fin de rédaction** se détecte comme dans Google More : plus de bouton « Arrêter », et un texte stable — 0,8 s après l'apparition des actions du message, sinon 3 s. Ce délai empêche de couper la réponse pendant une pause de Gemini au milieu de la rédaction.
 - **Transcription regroupée par tranches** d'au moins 20 s avant l'envoi : une vidéo d'une heure compte un millier de segments, qu'il serait long de taper dans l'éditeur pour aucun gain sur le résumé.
 - **Rien n'est injecté comme HTML** dans YouTube : chaque bloc est reconstruit avec `textContent`, et seuls les timecodes deviennent des liens. Un timecode qui dépasse la durée de la vidéo (« 23:59 ») n'est pas lié.
-- **Le point en cours** est suivi par un écouteur `timeupdate` en phase de **capture** sur le document : l'événement ne remonte pas, mais la capture le reçoit quand même, ce qui évite de suivre un `<video>` que YouTube peut remplacer.
+- **Le chapitre en cours** est suivi par un écouteur `timeupdate` en phase de **capture** sur le document : l'événement ne remonte pas, mais la capture le reçoit quand même, ce qui évite de suivre un `<video>` que YouTube peut remplacer.
 
 ### Côte à côte avec la vidéo
 
@@ -157,15 +157,46 @@ Le panneau de vidIQ est `div#video-companion-root.vidiq-react`, **enfant direct*
 
 Il est **masqué**, pas supprimé (attribut `data-yttools-hidden`) : supprimé, vidIQ le réinsérerait aussitôt. Le masquage et la disparition du classement ne valent que pour la vidéo résumée.
 
-### Une ligne horodatée par moment
+### Par chapitres, les timecodes en référence
 
-Le résumé n'est plus une poignée de points clés mais une **frise** : une ligne courte par moment ou changement de sujet, environ toutes les 90 s (entre 8 et 30 lignes selon la durée), chacune avec son timecode. Le surlignage suit cette frise — le timecode le plus avancé qui ne dépasse pas la lecture — et pas « la dernière ligne déjà passée dans la page » : la section « À retenir », placée après et non chronologique, l'aurait fait sauter.
+Deux formats ont précédé l'actuel. D'abord une poignée de points clés, trop maigre. Puis une **frise**, avec une ligne horodatée par moment toutes les 90 s environ. Elle se lisait mal : une liste de moments qui commencent tous par un timecode, sans structure.
 
-### Les timecodes manquants
+Le résumé se lit maintenant **par chapitres**. On trouve d'abord « En bref », puis 3 à 8 chapitres, un toutes les deux minutes et demie environ, chacun avec un titre court et 1 à 3 points. Le timecode n'est plus qu'une **référence** :
+- le prompt le place en fin de ligne et précise que chaque phrase doit se comprendre sans lui ;
+- l'affichage le retire du texte pour le poser en petite pastille au bout de la ligne.
 
-Gemini oublie parfois les timecodes malgré la consigne. Deux étages : le prompt donne un **modèle à recopier** et rappelle la consigne **après** la transcription, ce qui est bien mieux suivi qu'une phrase noyée avant un long texte. Et si un point en manque quand même, on le rapproche localement d'un passage de la transcription : mots rares en commun, pondérés par leur rareté, sur une **fenêtre glissante de 20 s sur les segments**. Pas sur les tranches du prompt : leurs frontières coupent les sujets en deux, et le timecode tombait quelques secondes trop tard. Un point qui ne ressemble à rien reste sans timecode — on n'invente pas.
+Seul un timecode **entre crochets ou parenthèses**, en fin ou en début de ligne, est pris pour une référence. Un timecode nu au milieu d'une phrase en fait partie, et il reste dans le texte comme simple lien.
+
+**Chapitres de la vidéo** : s'ils existent, Gemini suit leur découpage. On prend d'abord ceux du créateur, sinon ceux que YouTube génère. `rank-bridge.js` les lit dans la réponse « watch next » que `ytd-watch-flexy` garde dans `__data.data`, ou dans `ytInitialData` au premier chargement, sous `multiMarkersPlayerBarRenderer.markersMap`. Il vérifie avant que cette réponse parle bien de la vidéo courante, car la navigation interne laisse l'ancienne en place un instant. Vérifié sur la vraie page, au premier chargement puis après une navigation interne.
+
+**Lecture de la réponse** : Gemini ne suit pas toujours le modèle à la lettre. `gemini-writer.js` garde donc le niveau des titres et la profondeur des puces. Un chapitre peut alors être reconnu de plusieurs façons :
+- un titre placé après « Chapitres », ou un titre qui porte un timecode ;
+- une puce suivie de sous-puces ;
+- un paragraphe suivi de puces.
+
+Une partie de même rang que « Chapitres » (« ## À retenir ») n'est pas prise pour un chapitre : elle est affichée telle quelle après eux. Une réponse qui n'est pas en chapitres du tout est affichée telle quelle, avec l'ancien surlignage par frise.
+
+### Les références manquantes
+
+Gemini oublie parfois les timecodes malgré la consigne. Deux étages : le prompt donne un **modèle à recopier** et rappelle la consigne **après** la transcription, ce qui est bien mieux suivi qu'une phrase noyée avant un long texte. Et si un point en manque quand même, on le rapproche localement d'un passage de la transcription : mots rares en commun, pondérés par leur rareté, sur une **fenêtre glissante de 20 s sur les segments**. Pas sur les tranches du prompt : leurs frontières coupent les sujets en deux, et le timecode tombait quelques secondes trop tard. Un point qui ne ressemble à rien reste sans timecode — on n'invente pas. Un chapitre sans timecode prend celui de son premier point, ou à défaut celui du passage qui ressemble le plus à son titre et à ses points.
 
 ## Le résumé des commentaires
+
+### Jauge et camps
+
+Avant, le résumé avait quatre parties de même poids : « En bref », « La majorité », « Une minorité » et « Ce que les gens demandent ». Tout était en phrases, et le ton général ne sautait pas aux yeux.
+
+On demande maintenant à Gemini de classer chaque commentaire : positif, négatif ou neutre. Il donne la part des positifs et des négatifs parmi les avis exprimés, puis ce que dit chaque camp et ce que le public demande, en points de 12 mots au plus.
+
+L'extension affiche :
+- une **jauge verte et rouge**, dont les deux parts sont ramenées à 100 si Gemini se trompe dans l'addition ;
+- trois blocs colorés : « Ce qui plaît », « Ce qui déplaît » et « Ce que les gens demandent ». Une partie sans point (« Aucune critique notable ») devient une mention discrète, pas une puce.
+
+Les pourcentages sont lus où que Gemini les mette : titre, ligne ou puce, sous la forme « Positifs : 82 % » ou « 82 % de positifs ». Si un seul est donné, l'autre en est déduit. Une réponse hors format est affichée telle quelle.
+
+Ces pourcentages restent une **estimation de Gemini**, pas un comptage : un modèle de langage compte mal sur cent éléments, mais l'ordre de grandeur est juste.
+
+### Chargement des commentaires
 
 Repères lus sur une vraie page : `ytd-comment-thread-renderer` > `ytd-comment-view-model`, avec `#author-text`, `#content-text`, `#vote-count-middle`, `#more-replies`. Piège : `#pinned-comment-badge` et `#creator-heart` existent sur **tous** les commentaires, vides quand ils ne s'appliquent pas. Un repérage par présence aurait marqué chaque commentaire comme épinglé.
 

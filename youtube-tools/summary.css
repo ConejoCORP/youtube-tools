@@ -185,6 +185,242 @@
   box-shadow: inset 0 0 0 1px rgba(6, 95, 212, .45);
 }
 
+/* ------------------------------------------------ références (timecodes)
+   Petite pastille discrète au bout d'une ligne : elle accompagne le texte,
+   elle ne le structure pas. Un clic mène au passage. */
+
+.yttools-ai-ref {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .05);
+  color: var(--yt-spec-text-secondary, #606060);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  vertical-align: 1px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.yttools-ai-ref:hover {
+  background: rgba(6, 95, 212, .12);
+  color: #065fd4;
+}
+
+/* Retrouvée dans la transcription, pas donnée par Gemini : on le montre. */
+.yttools-ai-ref.is-estimated {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18);
+}
+
+/* ------------------------------------------------- résumé de la vidéo */
+
+.yttools-ai-card .yttools-sm-bref {
+  margin: 2px 0 10px;
+  line-height: 20px;
+}
+
+.yttools-ai-card ol.yttools-sm-chapitres {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yttools-ai-card li.yttools-sm-chap {
+  position: relative;
+  margin: 0 -6px 2px;
+  padding: 6px 6px 6px 36px;
+  border-radius: 10px;
+}
+
+/* Le fil qui relie les numéros : on lit les chapitres comme des étapes. */
+.yttools-ai-card li.yttools-sm-chap:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 16.5px;
+  top: 30px;
+  bottom: -6px;
+  width: 1px;
+  background: rgba(0, 0, 0, .12);
+}
+
+.yttools-sm-tete {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.yttools-sm-tete.is-cliquable {
+  cursor: pointer;
+}
+
+.yttools-sm-tete.is-cliquable:hover .yttools-sm-titre {
+  text-decoration: underline;
+}
+
+.yttools-sm-num {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .08);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.yttools-sm-titre {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.yttools-ai-card ul.yttools-sm-points {
+  margin: 2px 0 0;
+}
+
+.yttools-ai-card ul.yttools-sm-points li {
+  position: relative;
+  margin: 2px 0;
+  padding: 0 0 0 12px;
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.yttools-ai-card ul.yttools-sm-points li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .55;
+}
+
+/* Le chapitre en cours de lecture. */
+.yttools-ai-card li.yttools-sm-chap.is-active {
+  background: rgba(6, 95, 212, .08);
+}
+
+.yttools-ai-card li.yttools-sm-chap.is-active .yttools-sm-num {
+  background: #065fd4;
+  color: #fff;
+}
+
+/* --------------------------------------------- résumé des commentaires */
+
+.yttools-cm-jauge {
+  margin: 2px 0 12px;
+}
+
+.yttools-cm-legende {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.yttools-cm-pos,
+.yttools-cm-neg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.yttools-cm-pos { color: #1f8f3a; }
+.yttools-cm-neg { color: #d3202f; }
+
+.yttools-cm-pouce {
+  display: inline-flex;
+}
+
+.yttools-cm-pouce svg {
+  display: block;
+}
+
+.yttools-cm-barre {
+  display: flex;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, .08);
+}
+
+.yttools-cm-barre-pos { background: #2ba640; }
+.yttools-cm-barre-neg { background: #f03a47; }
+
+/* Un liseré entre les deux parts, quand il y en a deux. */
+.yttools-cm-barre-pos + .yttools-cm-barre-neg:not([style*="width: 0%"]) {
+  box-shadow: inset 2px 0 0 rgba(255, 255, 255, .85);
+}
+
+.yttools-cm-bloc {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.yttools-cm-bloc.is-pos { background: rgba(43, 166, 64, .09); }
+.yttools-cm-bloc.is-neg { background: rgba(240, 58, 71, .08); }
+.yttools-cm-bloc.is-ask { background: rgba(6, 95, 212, .07); }
+
+.yttools-ai-card .yttools-cm-bloc h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.yttools-cm-bloc.is-pos h3 { color: #1f8f3a; }
+.yttools-cm-bloc.is-neg h3 { color: #d3202f; }
+.yttools-cm-bloc.is-ask h3 { color: #065fd4; }
+
+.yttools-ai-card .yttools-cm-bloc ul {
+  margin: 0;
+}
+
+.yttools-ai-card .yttools-cm-bloc li {
+  position: relative;
+  margin: 2px 0;
+  padding: 0 0 0 14px;
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.yttools-ai-card .yttools-cm-bloc li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.yttools-cm-bloc.is-pos li::before { background: #2ba640; }
+.yttools-cm-bloc.is-neg li::before { background: #f03a47; }
+.yttools-cm-bloc.is-ask li::before { background: #065fd4; }
+
+.yttools-ai-card p.yttools-cm-vide {
+  margin: 0;
+  color: var(--yt-spec-text-secondary, #606060);
+  font-size: 13px;
+}
+
 .yttools-ai-wait,
 .yttools-ai-msg p {
   margin: 2px 0 6px;
@@ -241,6 +477,62 @@
 
 .yttools-ai-card[data-theme="dark"] li.is-active {
   background: rgba(62, 166, 255, .14);
+}
+
+.yttools-ai-card[data-theme="dark"] .yttools-ai-ref {
+  background: rgba(255, 255, 255, .08);
+  color: var(--yt-spec-text-secondary, #aaa);
+}
+
+.yttools-ai-card[data-theme="dark"] .yttools-ai-ref:hover {
+  background: rgba(62, 166, 255, .2);
+  color: #3ea6ff;
+}
+
+.yttools-ai-card[data-theme="dark"] .yttools-ai-ref.is-estimated {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25);
+}
+
+.yttools-ai-card[data-theme="dark"] li.yttools-sm-chap:not(:last-child)::before {
+  background: rgba(255, 255, 255, .16);
+}
+
+.yttools-ai-card[data-theme="dark"] .yttools-sm-num {
+  background: rgba(255, 255, 255, .12);
+}
+
+.yttools-ai-card[data-theme="dark"] li.yttools-sm-chap.is-active {
+  background: rgba(62, 166, 255, .12);
+}
+
+.yttools-ai-card[data-theme="dark"] li.yttools-sm-chap.is-active .yttools-sm-num {
+  background: #3ea6ff;
+  color: #0f0f0f;
+}
+
+.yttools-ai-card[data-theme="dark"] .yttools-cm-pos,
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-pos h3 { color: #5ddc7a; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-neg,
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-neg h3 { color: #ff7b84; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-ask h3 { color: #3ea6ff; }
+
+.yttools-ai-card[data-theme="dark"] .yttools-cm-barre { background: rgba(255, 255, 255, .12); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-barre-pos { background: #3fbf5a; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-barre-neg { background: #ff4e5b; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-barre-pos + .yttools-cm-barre-neg:not([style*="width: 0%"]) {
+  box-shadow: inset 2px 0 0 rgba(15, 15, 15, .9);
+}
+
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-pos { background: rgba(93, 220, 122, .1); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-neg { background: rgba(255, 123, 132, .1); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-ask { background: rgba(62, 166, 255, .1); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-pos li::before { background: #5ddc7a; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-neg li::before { background: #ff7b84; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-bloc.is-ask li::before { background: #3ea6ff; }
+
+.yttools-ai-card[data-theme="dark"] p.yttools-cm-vide {
+  color: var(--yt-spec-text-secondary, #aaa);
 }
 
 /* Filet de sécurité si le script n'a pas encore mesuré : l'indice de YouTube. */

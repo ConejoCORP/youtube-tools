@@ -24,10 +24,12 @@ const verifie = (nom, ok, detail) => {
   console.log((ok ? '  OK   ' : '  ECHEC') + ' ' + nom + (ok || detail === undefined ? '' : '   -> ' + JSON.stringify(detail)));
 };
 
+// Reponse au nouveau format : les deux pourcentages, puis ce que dit chaque camp.
 const BLOCS = [
-  { type: 'h', text: 'En bref' }, { type: 'p', text: 'Le public a adoré.' },
-  { type: 'h', text: 'La majorité' }, { type: 'li', text: 'Veut une suite' },
-  { type: 'h', text: 'Ce que les gens demandent' }, { type: 'li', text: 'Revoir le passage de 0:45' }
+  { type: 'h', level: 2, text: 'Avis' }, { type: 'p', text: 'Positifs : 80 %' }, { type: 'p', text: 'Négatifs : 20 %' },
+  { type: 'h', level: 2, text: 'Ce qui plaît' }, { type: 'li', text: 'Le concept, jugé très drôle' }, { type: 'li', text: 'La complicité du duo' },
+  { type: 'h', level: 2, text: 'Ce qui déplaît' }, { type: 'li', text: 'Une scène jugée trop longue' },
+  { type: 'h', level: 2, text: 'Ce que les gens demandent' }, { type: 'li', text: 'Revoir le passage de 0:45' }
 ];
 
 /**
@@ -179,7 +181,7 @@ async function resumer(ctx) {
     verifie('une centaine malgre la lenteur', nPrompt === 100, nPrompt);
   }
 
-  console.log('\n4. Le prompt : bref et global');
+  console.log('\n4. Le prompt : avis positifs / negatifs, puis des points courts');
   {
     const ctx = page();
     await resumer(ctx);
@@ -188,14 +190,30 @@ async function resumer(ctx) {
     // son auteur n'est pas nomme ici, le depot est public.
     const ligne = p.split('\n').find((l) => /^\[246 likes/.test(l)) || '';
     verifie('likes et reponses entre crochets', /^\[246 likes, 21 réponses\] @\S+ : Please do a part 2/.test(ligne), ligne.slice(0, 40));
-    verifie('majorite / minorite / demandes', /## La majorité/.test(p) && /## Une minorité/.test(p) && /## Ce que les gens demandent/.test(p));
-    verifie('lignes courtes, sans citation', /15 mots au plus, sans citation/.test(p));
-    verifie('plus de section « Critiques » detaillee', !/## Critiques et désaccords/.test(p));
+    verifie('classement positif / negatif / neutre demande', /positif \(/.test(p) && /négatif \(/.test(p) && /neutre \(/.test(p));
+    verifie('les deux pourcentages demandes', /## Avis\nPositifs : \(nombre\) %\nNégatifs : \(nombre\) %/.test(p));
+    verifie('ce qui plait / deplait / demandes', /## Ce qui plaît/.test(p) && /## Ce qui déplaît/.test(p) && /## Ce que les gens demandent/.test(p));
+    verifie('points courts, sans citation', /12 mots au plus, sans citation/.test(p));
+    verifie('plus de majorite / minorite en paragraphes', !/## La majorité/.test(p) && !/## Une minorité/.test(p));
 
     const card = ctx.doc.getElementById('yttools-comments-card');
     verifie('resume affiche sous l’en-tete', card && card.dataset.state === 'ok'
       && card.previousElementSibling === ctx.doc.querySelector('ytd-comments ytd-comments-header-renderer'));
-    verifie('timecode cite par le public devenu un lien', card && !!card.querySelector('a.yttools-ai-ts[data-t="45"]'));
+
+    console.log('\n5. L’affichage : jauge verte et rouge, puis chaque camp en points');
+    const texte = (sel) => ((card && card.querySelector(sel)) || {}).textContent || '';
+    verifie('legende de la jauge', texte('.yttools-cm-pos') === '80 % positifs' && texte('.yttools-cm-neg') === '20 % négatifs',
+      [texte('.yttools-cm-pos'), texte('.yttools-cm-neg')]);
+    const vert = card && card.querySelector('.yttools-cm-barre-pos');
+    const rouge = card && card.querySelector('.yttools-cm-barre-neg');
+    verifie('barre : 80 % de vert, 20 % de rouge', vert && rouge && vert.style.width === '80%' && rouge.style.width === '20%');
+    verifie('jauge lisible par un lecteur d’ecran', card && /80 % d’avis positifs, 20 % d’avis négatifs/.test(card.querySelector('.yttools-cm-jauge').getAttribute('aria-label')));
+    const blocs = card ? [...card.querySelectorAll('.yttools-cm-bloc')] : [];
+    verifie('trois parties, dans l’ordre', blocs.map((b) => b.className.replace('yttools-cm-bloc ', '')).join(',') === 'is-pos,is-neg,is-ask',
+      blocs.map((b) => b.className));
+    verifie('ce qui plait : 2 points', blocs[0] && blocs[0].querySelectorAll('li').length === 2);
+    verifie('ce qui deplait : 1 point', blocs[1] && blocs[1].querySelectorAll('li').length === 1);
+    verifie('timecode cite par le public devenu un lien', card && !!card.querySelector('.is-ask a.yttools-ai-ts[data-t="45"]'));
   }
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));

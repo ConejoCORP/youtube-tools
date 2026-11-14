@@ -9,7 +9,10 @@
  *     commentaires (il n'en affiche qu'une vingtaine a la fois), puis on revient
  *     exactement ou l'on etait ;
  *  2. on les envoie a Gemini en UNE seule demande ;
- *  3. le resume s'affiche juste sous l'en-tete, au-dessus des commentaires.
+ *  3. le resume s'affiche juste sous l'en-tete, au-dessus des commentaires :
+ *     une jauge verte et rouge (part des avis positifs et negatifs), puis en
+ *     points courts « Ce qui plait », « Ce qui deplait » et « Ce que les gens
+ *     demandent ».
  *
  * Reperes lus sur une vraie page de lecture (septembre 2026) :
  *  - un fil : ytd-comment-thread-renderer, son commentaire : ytd-comment-view-model ;
@@ -41,8 +44,8 @@
   const videoId = () => new URLSearchParams(location.search).get('v') || '';
   const isWatchPage = () => location.pathname === '/watch' && !!videoId();
 
-  const cache = new Map();           // id -> { blocks, n }
-  let etat = null;                   // { id, status: 'collect' | 'loading' | 'ok' | 'error', n, blocks, error }
+  const cache = new Map();           // id -> { structure ou blocks, n }
+  let etat = null;                   // { id, status: 'collect' | 'loading' | 'ok' | 'error', n, structure | blocks, error }
 
   /* ----------------------------------------------------------------- lecture */
 
@@ -168,42 +171,200 @@
       return `[${marques.join(', ')}] ${c.auteur} : ${c.texte}`;
     });
 
-    // Un resume de commentaires se lit en dix secondes : quelques points
-    // globaux, ou l'on voit d'un coup d'oeil ce que pense la majorite, ce que
-    // pense la minorite et ce que le public demande.
+    // Un resume de commentaires se lit en dix secondes : d'abord la part
+    // d'avis positifs et negatifs (affichee en jauge verte et rouge), puis ce
+    // que dit chaque camp, et ce que le public demande. Des points courts,
+    // jamais des paragraphes.
     return [
-      'Résume les commentaires de cette vidéo YouTube en quelques points globaux, très courts.',
+      'Résume les commentaires de cette vidéo YouTube : ce que pense le public, en points courts.',
       '',
       titre && `Titre : ${titre}`,
       chaine && `Chaîne : ${chaine}`,
       `${coms.length} commentaires parmi les plus populaires${total ? ` (sur ${total} au total)` : ''}. `
         + 'Les likes et réponses sont entre crochets : un commentaire très aimé pèse plus qu’un autre.',
       '',
-      'Réponds EXACTEMENT dans ce format, sans rien avant ni après. Chaque ligne fait 15 mots au plus, sans citation :',
+      'Classe d’abord chaque commentaire : positif (compliment, enthousiasme, remerciement), '
+        + 'négatif (critique, reproche, déception) ou neutre (question, blague sans avis, hors sujet).',
       '',
-      '## En bref',
-      '(le ressenti général, en une phrase)',
+      'Réponds EXACTEMENT dans ce format, sans rien avant ni après. Chaque point fait 12 mots au plus, sans citation :',
       '',
-      '## La majorité',
-      '- (ce que pensent la plupart des gens)',
-      '(2 ou 3 points)',
+      '## Avis',
+      'Positifs : (nombre) %',
+      'Négatifs : (nombre) %',
+      '(la part des commentaires positifs et négatifs parmi ceux qui donnent un avis : les deux font 100 %)',
       '',
-      '## Une minorité',
-      '- (un avis moins répandu ou divergent)',
-      '(1 ou 2 points)',
+      '## Ce qui plaît',
+      '- (ce que disent les avis positifs)',
+      '(2 à 4 points, du plus répandu au moins répandu)',
+      '',
+      '## Ce qui déplaît',
+      '- (ce que disent les avis négatifs)',
+      '(0 à 3 points ; s’il n’y en a pas, écris seulement « Aucune critique notable. »)',
       '',
       '## Ce que les gens demandent',
       '- (une suite, un sujet, une précision…)',
-      '(1 à 3 points)',
-      '',
-      'Si une partie n’a rien de notable, écris simplement « Rien de notable. »',
+      '(0 à 3 points ; sinon, écris seulement « Rien de notable. »)',
       '',
       'Commentaires :',
       lignes.join('\n'),
       '',
-      'RAPPEL : quelques points globaux et courts, pas de détail ni de citation. Reste fidèle aux '
-        + 'commentaires, n’invente rien. Réponds en français.'
+      'RAPPEL : les deux pourcentages d’abord, puis des points courts et globaux, sans citation. '
+        + 'Reste fidèle aux commentaires, n’invente rien. Réponds en français.'
     ].join('\n');
+  }
+
+  /* ----------------------------------------------- reponse -> avis */
+
+  const minuscules = (s) => String(s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+  // « Positifs : 82 % », « positif 82% », « 82 % de positifs », « 82 % d’avis positifs ».
+  const POS = [/positi\w*\s*[:=–-]?\s*(\d{1,3}(?:[.,]\d+)?)\s*%/, /(\d{1,3}(?:[.,]\d+)?)\s*%\s*(?:(?:des|de|d\W)\s*)?(?:avis\s+|commentaires\s+)?positi/];
+  const NEG = [/negati\w*\s*[:=–-]?\s*(\d{1,3}(?:[.,]\d+)?)\s*%/, /(\d{1,3}(?:[.,]\d+)?)\s*%\s*(?:(?:des|de|d\W)\s*)?(?:avis\s+|commentaires\s+)?negati/];
+
+  function pourcentage(motifs, texte) {
+    const t = minuscules(texte);
+    for (const re of motifs) {
+      const m = t.match(re);
+      if (m) {
+        const v = parseFloat(m[1].replace(',', '.'));
+        if (Number.isFinite(v) && v >= 0 && v <= 100) return v;
+      }
+    }
+    return null;
+  }
+
+  /** Le titre d'une partie -> son role. « Déplaît » avant « plaît » : l'un contient l'autre. */
+  function rubrique(titre) {
+    const n = TV.ai.norme(titre);
+    if (/deplai|negati|critique|reproche|n aime pas|defaut/.test(n)) return 'neg';
+    if (/plai|positi|aime|apprecie|points? forts?/.test(n)) return 'pos';
+    if (/demand|suggest|souhait|attend|requete|idee/.test(n)) return 'ask';
+    if (/avis|ressenti|ratio|sentiment|bilan|tendance/.test(n)) return 'avis';
+    return 'autre';
+  }
+
+  // « Aucune critique notable. », « Rien de notable. » : une partie vide.
+  const estVide = (t) => /^(aucun|aucune|rien|pas de|neant)\b/.test(TV.ai.norme(t));
+
+  /**
+   * Les blocs de Gemini -> { pos, neg, plait, deplait, demandes, autres }, ou
+   * null si la reponse n'est pas au format attendu (elle est alors affichee
+   * telle quelle).
+   */
+  function structurerAvis(blocks) {
+    const r = { pos: null, neg: null, plait: [], deplait: [], demandes: [], autres: [] };
+    let partie = '';
+    for (const b of blocks || []) {
+      const texte = clean(b.text);
+      if (!texte) continue;
+      // Les pourcentages, ou que Gemini les ait mis (titre, ligne ou puce).
+      const p = pourcentage(POS, texte);
+      const n = pourcentage(NEG, texte);
+      if (p !== null) r.pos = p;
+      if (n !== null) r.neg = n;
+      if (b.type === 'h') {
+        partie = rubrique(texte);
+        if (partie === 'autre' && p === null && n === null) r.autres.push(b);
+        continue;
+      }
+      if (p !== null || n !== null) continue;
+      if (partie === 'pos') r.plait.push(texte);
+      else if (partie === 'neg') r.deplait.push(texte);
+      else if (partie === 'ask') r.demandes.push(texte);
+      else if (partie !== 'avis') r.autres.push(b);
+    }
+    if (r.pos !== null && r.neg === null) r.neg = Math.max(0, 100 - r.pos);
+    if (r.neg !== null && r.pos === null) r.pos = Math.max(0, 100 - r.neg);
+    return r.pos !== null || r.plait.length || r.deplait.length ? r : null;
+  }
+
+  /* ------------------------------------------------------- affichage */
+
+  // Pouces de Material Design (licence Apache 2.0).
+  const POUCE_HAUT = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>';
+  const POUCE_BAS = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>';
+
+  function icone(svg) {
+    const s = document.createElement('span');
+    s.className = 'yttools-cm-pouce';
+    s.innerHTML = svg;                               // constante de ce fichier, jamais une donnee
+    return s;
+  }
+
+  /** La jauge : part des avis positifs en vert, negatifs en rouge. */
+  function jauge(r) {
+    const box = document.createElement('div');
+    box.className = 'yttools-cm-jauge';
+    const somme = (r.pos || 0) + (r.neg || 0);
+    if (!(somme > 0)) {
+      const p = document.createElement('p');
+      p.className = 'yttools-cm-vide';
+      p.textContent = 'Pas d’avis tranché : surtout des questions et des blagues.';
+      box.append(p);
+      return box;
+    }
+    const pos = Math.round((r.pos || 0) * 100 / somme);
+    const neg = 100 - pos;
+    box.setAttribute('role', 'img');
+    box.setAttribute('aria-label', `${pos} % d’avis positifs, ${neg} % d’avis négatifs`);
+
+    const legende = document.createElement('div');
+    legende.className = 'yttools-cm-legende';
+    const lp = document.createElement('span');
+    lp.className = 'yttools-cm-pos';
+    lp.append(icone(POUCE_HAUT), `${pos} % positifs`);
+    const ln = document.createElement('span');
+    ln.className = 'yttools-cm-neg';
+    ln.append(`${neg} % négatifs`, icone(POUCE_BAS));
+    legende.append(lp, ln);
+
+    const barre = document.createElement('div');
+    barre.className = 'yttools-cm-barre';
+    const bp = document.createElement('span');
+    bp.className = 'yttools-cm-barre-pos';
+    bp.style.width = `${pos}%`;
+    const bn = document.createElement('span');
+    bn.className = 'yttools-cm-barre-neg';
+    bn.style.width = `${neg}%`;
+    barre.append(bp, bn);
+
+    box.append(legende, barre);
+    return box;
+  }
+
+  /** Une partie : titre colore, puis ses points (ou une mention si elle est vide). */
+  function partie(cls, titre, items, siVide) {
+    const sec = document.createElement('div');
+    sec.className = `yttools-cm-bloc ${cls}`;
+    const h = document.createElement('h3');
+    h.textContent = titre;
+    sec.append(h);
+    const pleins = items.filter((t) => !estVide(t));
+    if (!pleins.length) {
+      const p = document.createElement('p');
+      p.className = 'yttools-cm-vide';
+      p.textContent = items.length ? items[0] : siVide;
+      sec.append(p);
+      return sec;
+    }
+    const ul = document.createElement('ul');
+    for (const t of pleins) {
+      const li = document.createElement('li');
+      li.append(TV.ai.avecLiens(t).frag);            // un timecode cite par le public reste un lien
+      ul.append(li);
+    }
+    sec.append(ul);
+    return sec;
+  }
+
+  function rendreAvis(body, r) {
+    if (r.pos !== null || r.neg !== null) body.append(jauge(r));
+    body.append(
+      partie('is-pos', 'Ce qui plaît', r.plait, 'Rien de notable.'),
+      partie('is-neg', 'Ce qui déplaît', r.deplait, 'Aucune critique notable.'),
+      partie('is-ask', 'Ce que les gens demandent', r.demandes, 'Rien de notable.')
+    );
+    if (r.autres.length) TV.ai.renderBlocks(body, r.autres);
   }
 
   /* ------------------------------------------------------------------ bouton */
@@ -282,7 +443,8 @@
       return;
     }
     sous.textContent = `par Gemini · ${etat.n} commentaires analysés`;
-    TV.ai.renderBlocks(body, etat.blocks);
+    if (etat.structure) rendreAvis(body, etat.structure);
+    else TV.ai.renderBlocks(body, etat.blocks);       // reponse hors format : telle quelle
   }
 
   function placeCard() {
@@ -310,8 +472,7 @@
   async function lancer(forcer = false) {
     const id = videoId();
     if (!forcer && cache.has(id)) {
-      const c = cache.get(id);
-      etat = { id, status: 'ok', blocks: c.blocks, n: c.n };
+      etat = { id, status: 'ok', ...cache.get(id) };
       rafraichir();
       return;
     }
@@ -335,8 +496,10 @@
     if (!etat || etat.id !== id) return;                 // video changee ou panneau ferme
 
     if (rep.ok) {
-      cache.set(id, { blocks: rep.blocks, n: coms.length });
-      etat = { id, status: 'ok', blocks: rep.blocks, n: coms.length };
+      const structure = structurerAvis(rep.blocks);
+      const contenu = structure ? { structure, n: coms.length } : { blocks: rep.blocks, n: coms.length };
+      cache.set(id, contenu);
+      etat = { id, status: 'ok', ...contenu };
     } else {
       etat = { id, status: 'error', error: rep.error };
     }
@@ -358,5 +521,5 @@
   });
 
   // Exposes pour les tests uniquement.
-  window.__yttoolsComments = { lireCommentaires, prompt, charger, lancer, totalAnnonce, suiteDeLaListe };
+  window.__yttoolsComments = { lireCommentaires, prompt, charger, lancer, totalAnnonce, suiteDeLaListe, structurerAvis, rendreAvis };
 })();

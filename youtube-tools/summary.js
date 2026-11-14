@@ -5,16 +5,18 @@
  *
  * Une fois la transcription copiee (bouton ☰), un bouton « Resumer » apparait
  * a cote. Il envoie la transcription a Gemini (voir background.js) et affiche
- * la reponse en tete de la colonne de droite : on la lit en regardant la video,
- * chaque timecode est cliquable, et le point en cours de lecture est surligne.
+ * la reponse en tete de la colonne de droite, a lire en regardant la video :
+ * « En bref », puis la video chapitre par chapitre, chaque chapitre avec ses
+ * points. Les timecodes ne sont que des references, en petit au bout des
+ * lignes (un clic mene au passage), et le chapitre en cours est surligne.
  *
  * Le temps du resume, le classement sur 10 et le panneau de vidIQ s'effacent
  * pour que le resume soit cote a cote avec la video — sur CETTE video
  * seulement : les suivantes les retrouvent.
  *
  * Ce fichier expose aussi, via TV.ai, l'interface commune aux resumes (carte,
- * rendu des blocs, envoi a Gemini) : comments.js s'en sert pour le resume des
- * commentaires.
+ * rendu des blocs, references, envoi a Gemini) : comments.js s'en sert pour le
+ * resume des commentaires.
  *
  * Le texte de Gemini n'est jamais insere comme HTML : chaque bloc est
  * reconstruit avec textContent, seuls les timecodes devenant des liens.
@@ -36,8 +38,8 @@
   const videoId = () => new URLSearchParams(location.search).get('v') || '';
   const isWatchPage = () => location.pathname === '/watch' && !!videoId();
 
-  const cache = new Map();          // id -> blocs : rouvrir ne redemande rien a Gemini
-  let panneau = null;               // { id, status: 'loading' | 'ok' | 'error', blocks, error }
+  const cache = new Map();          // id -> { structure } ou { blocks } : rouvrir ne redemande rien a Gemini
+  let panneau = null;               // { id, status: 'loading' | 'ok' | 'error', structure | blocks, error }
 
   /* -------------------------------------------------------------- timecodes */
 
@@ -92,6 +94,28 @@
     return out;
   }
 
+  const SRC = 'data-yttools-rank-src';
+
+  /**
+   * Les chapitres de la video (ceux du createur, sinon ceux de YouTube), que
+   * rank-bridge.js recopie depuis la page. null s'il n'y en a pas.
+   */
+  function chapitresDuPont(id) {
+    let d = null;
+    try { d = JSON.parse(document.documentElement.getAttribute(SRC) || 'null'); } catch { d = null; }
+    const c = d && d.id === id && d.chapitres;
+    return c && Array.isArray(c.liste) && c.liste.length >= 2 ? c : null;
+  }
+
+  /**
+   * Le resume se lit par CHAPITRES : un titre, puis les points qui disent
+   * l'essentiel de chacun. Les timecodes ne sont que des references, poses en
+   * fin de ligne : ils ne structurent plus le resume (l'ancienne version etait
+   * une liste de moments, chaque ligne commencant par son timecode, et se
+   * lisait mal).
+   *
+   * Si la video a deja des chapitres, Gemini suit ce decoupage.
+   */
   function prompt(tr) {
     const m = tr.meta || {};
     const parts = tranches(tr.rows);
@@ -102,43 +126,131 @@
       m.duree && `Durée : ${m.duree}`
     ].filter(Boolean).join('\n');
 
-    // Une ligne horodatee par moment : on voit d'un coup d'oeil de quoi parle
-    // chaque passage, et on y saute d'un clic. La densite suit la duree — une
-    // ligne toutes les ~90 s, entre 8 et 30 lignes.
+    // Un chapitre toutes les deux minutes et demie environ, entre 3 et 8 : assez
+    // pour suivre les etapes, sans redevenir une liste de moments.
     const dureeS = Number(m.duree_s) || (tr.rows.length ? tr.rows[tr.rows.length - 1].start : 0);
-    const lignes = Math.max(8, Math.min(30, Math.round(dureeS / 90)));
-    const pas = Math.max(1, Math.round(dureeS / 60 / lignes));
+    const nombre = Math.max(3, Math.min(8, Math.round(dureeS / 150)));
+    const page = chapitresDuPont(tr.id || videoId());
+    const decoupage = page
+      ? [
+          `La vidéo est déjà découpée en chapitres (${page.source === 'createur' ? 'par son créateur' : 'automatiquement par YouTube'}). `
+            + 'Suis ce découpage : un chapitre du résumé par chapitre de la vidéo, dans le même ordre, '
+            + 'avec un titre court qui en dit l’idée.'
+            + (page.liste.length > 10 ? ' Tu peux regrouper des chapitres voisins très courts.' : ''),
+          page.liste.map((c) => `[${fmt(c.t, withHours)}] ${c.titre}`).join('\n')
+        ]
+      : [`Découpe la vidéo en ${nombre} chapitres environ : un par grande étape ou changement de sujet, dans l’ordre de la vidéo.`];
 
     // Le format est donne comme un MODELE a recopier, et rappele apres la
     // transcription : un modele suivi d'un rappel est bien mieux respecte
     // qu'une consigne en prose noyee avant un long texte.
     return [
-      'Résume cette vidéo YouTube à partir de sa transcription horodatée.',
+      'Résume cette vidéo YouTube, chapitre par chapitre, à partir de sa transcription horodatée.',
       '',
       entete,
+      '',
+      ...decoupage,
       '',
       'Réponds EXACTEMENT dans ce format, sans rien avant ni après :',
       '',
       '## En bref',
-      '(une phrase sur le sujet de la vidéo)',
+      '(1 ou 2 phrases : de quoi parle la vidéo et ce qu’il faut en retenir)',
       '',
-      '## Déroulé',
-      '- [0:00] (ce qui se passe, en quelques mots)',
-      '- [1:30] (le moment suivant)',
-      `(environ ${lignes} lignes, à peu près une toutes les ${pas} minute${pas > 1 ? 's' : ''}, dans l’ordre de la vidéo ; `
-        + 'une ligne par moment ou changement de sujet, 12 mots au plus)',
+      '## Chapitres',
+      '### (titre court du chapitre, 2 à 6 mots) [0:00]',
+      '- (un point important de ce chapitre, 15 mots au plus) [0:12]',
+      '- (un autre point) [0:41]',
+      '### (titre du chapitre suivant) [2:30]',
+      '- (…) [2:45]',
+      '(1 à 3 points par chapitre : ce qui est dit, montré ou décidé, pas « ils parlent de… »)',
       '',
-      '## À retenir',
-      '- [m:ss] (une idée clé, avec le timecode où elle est dite)',
-      '(2 ou 3 lignes)',
+      'Le timecode entre crochets en fin de ligne n’est qu’une référence : le moment de la transcription '
+        + 'où c’est dit. Chaque titre et chaque point doit se comprendre sans lui.',
       '',
       'Transcription :',
       parts.map((p) => `[${fmt(p.start, withHours)}] ${p.text}`).join('\n'),
       '',
-      'RAPPEL : CHAQUE ligne de « Déroulé » et de « À retenir » commence OBLIGATOIREMENT par un timecode '
-        + 'entre crochets, repris de la transcription ci-dessus. Lignes courtes. Reste fidèle à la transcription, '
-        + 'n’invente rien. Réponds en français.'
+      'RAPPEL : un résumé par chapitres, avec des points courts qui disent l’essentiel, et non une liste de moments. '
+        + 'Termine chaque titre et chaque point par son timecode de référence entre crochets, repris de la '
+        + 'transcription. Reste fidèle à la transcription, n’invente rien. Réponds en français.'
     ].join('\n');
+  }
+
+  /* ------------------------------------------- reponse -> chapitres */
+
+  const sansAccents = (s) => String(s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  const norme = (s) => sansAccents(s).replace(/[^a-z0-9]+/g, ' ').trim();
+
+  // Un timecode de reference, entre crochets ou parentheses, en fin ou en debut
+  // de ligne : « [1:23] », « (1:23) », une plage « [1:23 – 2:10] » (on garde
+  // son debut). Un timecode NU au milieu d'une phrase en fait partie : il reste
+  // dans le texte, ou il devient un simple lien.
+  const REF_FIN = /\s*[-–—·,]?\s*[[(]((?:\d{1,2}:)?\d{1,2}:[0-5]\d)(?:\s*[-–—à]\s*(?:\d{1,2}:)?\d{1,2}:[0-5]\d)?\s*[\])]\s*[.;]?\s*$/;
+  const REF_DEBUT = /^\s*[[(]((?:\d{1,2}:)?\d{1,2}:[0-5]\d)(?:\s*[-–—à]\s*(?:\d{1,2}:)?\d{1,2}:[0-5]\d)?\s*[\])]\s*[-–—:·]?\s*/;
+
+  /** « Un point important [1:23] » -> { texte: 'Un point important', t: 83 }. */
+  function separerRef(texte) {
+    let s = String(texte || '');
+    let t = null;
+    let m = s.match(REF_FIN);
+    if (m && m.index > 0) { t = secondes(m[1]); s = s.slice(0, m.index); }
+    m = s.match(REF_DEBUT);
+    if (m && m[0].length < s.length) { if (t === null) t = secondes(m[1]); s = s.slice(m[0].length); }
+    return { texte: clean(s), t };
+  }
+
+  const EST_BREF = /^(en bref|resume|en resume|l essentiel|synthese)$/;
+  const EST_CHAPITRES = /^(chapitres?|les chapitres|etapes|les etapes)$/;
+  const EST_AUTRE = /^(a retenir|points cles|conclusion|en conclusion|a noter)$/;
+
+  /**
+   * Les blocs de Gemini -> { bref: [textes], chapitres: [{ titre, t, points:
+   * [{ texte, t }] }], autres: [blocs] }, ou null si la reponse n'est pas un
+   * resume par chapitres (elle est alors affichee telle quelle).
+   *
+   * Un chapitre est un titre qui suit « Chapitres » ou qui porte un timecode ;
+   * par repli, un paragraphe suivi de puces, ou une puce suivie de sous-puces
+   * (selon la facon dont Gemini a mis en forme sa reponse).
+   */
+  function structurer(blocks) {
+    const res = { bref: [], chapitres: [], autres: [] };
+    let section = '';
+    let niveau = 0;                       // niveau du titre « Chapitres » (## = 2)
+    let chap = null;
+    const nouveau = (titre, t) => { chap = { titre, t, points: [] }; res.chapitres.push(chap); };
+
+    for (let i = 0; i < (blocks || []).length; i++) {
+      const b = blocks[i];
+      const { texte, t } = separerRef(b.text);
+      if (!texte) continue;
+
+      if (b.type === 'h') {
+        const n = norme(texte);
+        if (t === null && EST_BREF.test(n)) { section = 'bref'; continue; }
+        if (t === null && EST_CHAPITRES.test(n)) { section = 'chap'; niveau = b.level || 0; chap = null; continue; }
+        // Une autre partie de meme rang que « Chapitres » (« ## À retenir ») n'est pas un chapitre.
+        const memeRang = niveau > 0 && b.level > 0 && b.level <= niveau;
+        if (t === null && (memeRang || EST_AUTRE.test(n))) { section = 'autre'; chap = null; res.autres.push(b); continue; }
+        if (section === 'chap' || t !== null) { section = 'chap'; nouveau(texte, t); continue; }
+        section = 'autre';
+        res.autres.push(b);
+        continue;
+      }
+
+      if (section === 'bref') { res.bref.push(b.text); continue; }
+      if (section === 'chap') {
+        const suivant = blocks[i + 1];
+        const titre =
+          (b.type === 'p' && suivant && suivant.type === 'li') ||
+          (b.type === 'li' && !(b.depth > 0) && suivant && suivant.type === 'li' && (suivant.depth || 0) > (b.depth || 0));
+        if (titre) { nouveau(texte, t); continue; }
+        if (!chap) nouveau('', null);
+        chap.points.push({ texte, t });
+        continue;
+      }
+      res.autres.push(b);
+    }
+    return res.chapitres.some((c) => c.titre || c.points.length) ? res : null;
   }
 
   /* ------------------------------------- timecodes retrouves localement */
@@ -152,60 +264,104 @@
     (String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().match(/[a-z0-9]{4,}/g) || [])
       .filter((w) => !MOTS_VIDES.has(w)));
 
-  /**
+  /*
    * Gemini oublie parfois les timecodes malgre la consigne. Pour chaque point
    * qui n'en a pas, on retrouve le passage de la transcription qui lui
    * ressemble le plus — mots rares en commun, ponderes par leur rarete — et on
    * lui attribue son timecode. Aucune requete : tout se fait ici.
    *
-   * Un timecode retrouve ainsi est marque `estimated` et s'affiche
+   * Un timecode retrouve ainsi est marque comme estime et s'affiche
    * differemment : c'est une deduction, pas une affirmation de Gemini.
    */
-  function horodater(blocks, rows) {
-    if (!rows || !rows.length) return blocks;
-    const withHours = rows[rows.length - 1].start >= 3600;
+
+  /** La transcription, preparee pour retrouver() : mots-cles par segment et rarete de chaque mot. */
+  function indexer(rows) {
     const segs = rows.map((r) => motsCles(r.text));
     const df = new Map();
     segs.forEach((d) => d.forEach((w) => df.set(w, (df.get(w) || 0) + 1)));
     const idf = (w) => Math.log((segs.length + 1) / ((df.get(w) || 0) + 0.5));
-    const FENETRE = 20;              // secondes : un sujet tient rarement en un seul segment
+    return { rows, segs, idf };
+  }
+
+  const FENETRE = 20;                // secondes : un sujet tient rarement en un seul segment
+
+  /**
+   * Le moment de la transcription qui ressemble le plus a `texte` (mots rares
+   * en commun), ou null si rien ne ressemble assez : on n'invente pas.
+   * `apres` : a score voisin, on prefere ce qui vient apres ce moment.
+   */
+  function retrouver(ix, texte, apres) {
+    const { rows, segs, idf } = ix;
+    const mots = motsCles(texte);
+    if (mots.size < 2) return null;
+
+    // Fenetre glissante sur les SEGMENTS, et non sur les tranches de 20 s du
+    // prompt : leurs frontieres coupent les sujets en deux, et le timecode
+    // tombait alors sur la mauvaise moitie, quelques secondes trop tard.
+    let meilleur = -1;
+    let score = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const communs = new Set();
+      for (let j = i; j < rows.length && rows[j].start - rows[i].start <= FENETRE; j++) {
+        segs[j].forEach((w) => { if (mots.has(w)) communs.add(w); });
+      }
+      if (communs.size < 2) continue;
+      let s = 0;
+      communs.forEach((w) => { s += idf(w); });
+      if (rows[i].start >= apres) s += 0.25;
+      if (s > score + 1e-9) { score = s; meilleur = i; }
+    }
+    if (meilleur < 0 || score < 2.5) return null;
+
+    // On se cale sur le premier segment de la fenetre qui parle du sujet.
+    let debut = meilleur;
+    while (debut < rows.length - 1 && ![...segs[debut]].some((w) => mots.has(w))) debut++;
+    return rows[debut].start;
+  }
+
+  /** Repli pour une reponse qui n'est pas en chapitres : un timecode devant chaque puce qui n'en a pas. */
+  function horodater(blocks, rows) {
+    if (!rows || !rows.length) return blocks;
+    const withHours = rows[rows.length - 1].start >= 3600;
+    const ix = indexer(rows);
 
     let precedent = 0;
     return blocks.map((b) => {
       if (b.type !== 'li') return b;
       const deja = b.text.match(A_UN_TS);
       if (deja) { precedent = secondes(deja[0]); return b; }
-
-      const mots = motsCles(b.text);
-      if (mots.size < 2) return b;
-
-      // Fenetre glissante sur les SEGMENTS, et non sur les tranches de 20 s du
-      // prompt : leurs frontieres coupent les sujets en deux, et le timecode
-      // tombait alors sur la mauvaise moitie, quelques secondes trop tard.
-      let meilleur = -1;
-      let score = 0;
-      for (let i = 0; i < rows.length; i++) {
-        const communs = new Set();
-        for (let j = i; j < rows.length && rows[j].start - rows[i].start <= FENETRE; j++) {
-          segs[j].forEach((w) => { if (mots.has(w)) communs.add(w); });
-        }
-        if (communs.size < 2) continue;
-        let s = 0;
-        communs.forEach((w) => { s += idf(w); });
-        // Les points cles suivent l'ordre de la video : a score voisin, on
-        // prefere ce qui vient apres le point precedent.
-        if (rows[i].start >= precedent) s += 0.25;
-        if (s > score + 1e-9) { score = s; meilleur = i; }
-      }
-      if (meilleur < 0 || score < 2.5) return b;     // rien de ressemblant : on n'invente pas
-
-      // On se cale sur le premier segment de la fenetre qui parle du sujet.
-      let debut = meilleur;
-      while (debut < rows.length - 1 && ![...segs[debut]].some((w) => mots.has(w))) debut++;
-      const t = rows[debut].start;
+      const t = retrouver(ix, b.text, precedent);
+      if (t === null) return b;
       precedent = t;
       return { ...b, text: `[${fmt(t, withHours)}] ${b.text}`, estimated: true };
     });
+  }
+
+  /**
+   * Les references que Gemini a oubliees, retrouvees dans la transcription et
+   * marquees `estime`. Un chapitre sans timecode prend celui de son premier
+   * point, a defaut celui du passage qui ressemble le plus a son titre et a ses
+   * points.
+   */
+  function completerRefs(s, rows) {
+    if (!s || !rows || !rows.length) return s;
+    const ix = indexer(rows);
+    let precedent = 0;
+    for (const c of s.chapitres) {
+      if (c.t === null) {
+        const donnes = c.points.map((p) => p.t).filter((t) => t !== null);
+        const t = donnes.length ? Math.min(...donnes)
+          : retrouver(ix, [c.titre, ...c.points.map((p) => p.texte)].join(' '), precedent);
+        if (t !== null) { c.t = t; c.estime = true; }
+      }
+      if (c.t !== null) precedent = c.t;
+      for (const p of c.points) {
+        if (p.t !== null) continue;
+        const t = retrouver(ix, p.texte, precedent);
+        if (t !== null) { p.t = t; p.estime = true; }
+      }
+    }
+    return s;
   }
 
   /* ------------------------------------------- interface commune (TV.ai) */
@@ -276,6 +432,85 @@
     }
   }
 
+  /**
+   * Un timecode de reference : une petite pastille discrete, en fin de ligne,
+   * qui mene au passage. Elle accompagne le texte, elle ne le structure pas.
+   */
+  function refTs(s, estime) {
+    const a = document.createElement('a');
+    a.className = 'yttools-ai-ref' + (estime ? ' is-estimated' : '');
+    a.href = `/watch?v=${encodeURIComponent(videoId())}&t=${s}s`;
+    a.dataset.t = String(s);
+    a.textContent = fmt(s, (duree() || 0) >= 3600);
+    a.title = estime ? 'Passage retrouvé dans la transcription' : 'Revoir ce passage';
+    a.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); aller(s); });
+    return a;
+  }
+
+  /** Un texte suivi de sa reference (si elle tombe dans la video). */
+  function ligneAvecRef(el, texte, t, estime) {
+    const fin = duree();
+    el.append(avecLiens(texte).frag);
+    if (t !== null && t !== undefined && (fin == null || t <= fin + 5)) el.append(refTs(t, estime));
+  }
+
+  /**
+   * Le resume par chapitres : « En bref », puis chaque chapitre numerote, son
+   * titre (un clic y mene) et ses points, chacun suivi de sa reference.
+   */
+  function rendreChapitres(body, s) {
+    const fin = duree();
+    const valide = (t) => t !== null && t !== undefined && (fin == null || t <= fin + 5);
+
+    if (s.bref.length) {
+      const p = document.createElement('p');
+      p.className = 'yttools-sm-bref';
+      p.append(avecLiens(s.bref.join(' ')).frag);
+      body.append(p);
+    }
+
+    const ol = document.createElement('ol');
+    ol.className = 'yttools-sm-chapitres';
+    s.chapitres.forEach((c, i) => {
+      const li = document.createElement('li');
+      li.className = 'yttools-sm-chap';
+      if (valide(c.t)) li.dataset.t = String(c.t);
+
+      const tete = document.createElement('div');
+      tete.className = 'yttools-sm-tete';
+      const num = document.createElement('span');
+      num.className = 'yttools-sm-num';
+      num.textContent = String(i + 1);
+      const titre = document.createElement('span');
+      titre.className = 'yttools-sm-titre';
+      titre.textContent = c.titre || `Partie ${i + 1}`;
+      tete.append(num, titre);
+      if (valide(c.t)) {
+        tete.append(refTs(c.t, c.estime));
+        tete.classList.add('is-cliquable');
+        tete.title = 'Aller au début de ce chapitre';
+        tete.addEventListener('click', (e) => { e.preventDefault(); aller(c.t); });
+      }
+      li.append(tete);
+
+      if (c.points.length) {
+        const ul = document.createElement('ul');
+        ul.className = 'yttools-sm-points';
+        for (const p of c.points) {
+          const pl = document.createElement('li');
+          ligneAvecRef(pl, p.texte, p.t, p.estime);
+          ul.append(pl);
+        }
+        li.append(ul);
+      }
+      ol.append(li);
+    });
+    body.append(ol);
+
+    // Une partie en plus (« À retenir »…) : affichee telle quelle, rien ne se perd.
+    if (s.autres.length) renderBlocks(body, s.autres);
+  }
+
   /** Une carte de resume : en-tete (etoile, titre, sous-titre, croix) et corps. */
   function buildCard({ id, titre, label, onClose }) {
     const card = document.createElement('section');
@@ -343,7 +578,7 @@
     }
   }
 
-  TV.ai = { etoile, renderBlocks, buildCard, message, erreurLisible, ask, avecLiens };
+  TV.ai = { etoile, renderBlocks, buildCard, message, erreurLisible, ask, avecLiens, refTs, ligneAvecRef, separerRef, norme };
 
   /* ------------------------------------- cote a cote avec la video */
 
@@ -456,33 +691,40 @@
       message(body, erreurLisible(panneau.error), () => { cache.delete(videoId()); lancer(true); });
       return;
     }
-    sous.textContent = 'par Gemini · clique un timecode pour y aller';
-    renderBlocks(body, panneau.blocks);
+    if (panneau.structure) {
+      sous.textContent = 'par Gemini · les petits timecodes mènent au passage';
+      rendreChapitres(body, panneau.structure);
+    } else {
+      sous.textContent = 'par Gemini · clique un timecode pour y aller';
+      renderBlocks(body, panneau.blocks);
+    }
     surligner();
   }
 
   /**
-   * Le moment en cours de lecture, dans la frise (le premier bloc de lignes
-   * horodatees) : celui dont le timecode est le plus avance sans depasser la
-   * lecture.
+   * Le chapitre en cours de lecture : celui dont le debut est le plus avance
+   * sans depasser la lecture.
    *
-   * Pas « la derniere ligne deja passee dans l'ordre de la page » : « A
-   * retenir » vient apres la frise et n'est pas chronologique, le surlignage y
-   * aurait saute au lieu de suivre la video.
+   * Repli (reponse qui n'est pas en chapitres) : la frise, c'est-a-dire le
+   * premier bloc de lignes horodatees. Pas « la derniere ligne deja passee dans
+   * l'ordre de la page » : « A retenir » vient apres la frise et n'est pas
+   * chronologique, le surlignage y aurait saute au lieu de suivre la video.
    */
   function surligner() {
     const card = document.getElementById(CARD_ID);
     const v = video();
     if (!card || !v || card.dataset.state !== 'ok') return;
     const t = v.currentTime;
-    const frise = Array.from(card.querySelectorAll('ul')).find((u) => u.querySelector('li[data-t]'));
+    let candidats = card.querySelectorAll('li.yttools-sm-chap[data-t]');
+    if (!candidats.length) {
+      const frise = Array.from(card.querySelectorAll('ul')).find((u) => u.querySelector('li[data-t]'));
+      candidats = frise ? frise.querySelectorAll('li[data-t]') : [];
+    }
     let actif = null;
     let plusAvance = -1;
-    if (frise) {
-      for (const li of frise.querySelectorAll('li[data-t]')) {
-        const lt = Number(li.dataset.t);
-        if (lt <= t + 0.5 && lt > plusAvance) { plusAvance = lt; actif = li; }
-      }
+    for (const li of candidats) {
+      const lt = Number(li.dataset.t);
+      if (lt <= t + 0.5 && lt > plusAvance) { plusAvance = lt; actif = li; }
     }
     for (const li of card.querySelectorAll('li.is-active')) if (li !== actif) li.classList.remove('is-active');
     if (actif && !actif.classList.contains('is-active')) actif.classList.add('is-active');
@@ -531,7 +773,7 @@
     faireDeLaPlace(id);
 
     if (!forcer && cache.has(id)) {
-      panneau = { id, status: 'ok', blocks: cache.get(id) };
+      panneau = { id, status: 'ok', ...cache.get(id) };
       rafraichir();
       return;
     }
@@ -544,9 +786,11 @@
     if (!panneau || panneau.id !== id) return;          // video changee ou panneau ferme entre-temps
 
     if (rep.ok) {
-      const blocs = horodater(rep.blocks, tr.rows);
-      cache.set(id, blocs);
-      panneau = { id, status: 'ok', blocks: blocs };
+      // En chapitres (le cas normal) ; sinon la reponse telle quelle, horodatee.
+      const structure = completerRefs(structurer(rep.blocks), tr.rows);
+      const contenu = structure ? { structure } : { blocks: horodater(rep.blocks, tr.rows) };
+      cache.set(id, contenu);
+      panneau = { id, status: 'ok', ...contenu };
     } else {
       panneau = { id, status: 'error', error: rep.error };
     }
@@ -571,5 +815,5 @@
   });
 
   // Exposes pour les tests uniquement.
-  window.__yttoolsSummary = { prompt, tranches, horodater, lancer, blocsVidiq };
+  window.__yttoolsSummary = { prompt, tranches, horodater, lancer, blocsVidiq, structurer, separerRef, completerRefs, chapitresDuPont, rendreChapitres };
 })();

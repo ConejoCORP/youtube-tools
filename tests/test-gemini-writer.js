@@ -101,6 +101,9 @@ const RESUME = [
     verifie('icones et renvois retires', !blocs.some((b) => /content_copy/.test(b.text)) &&
       blocs[blocs.length - 1].text === 'Le jeu devient dur vers [1:12].', blocs[blocs.length - 1].text);
     verifie('sous-puce gardee', blocs.some((b) => b.type === 'li' && b.text === '[0:40] un détail'));
+    verifie('sous-puce reconnue comme telle (profondeur 1)',
+      blocs.find((b) => b.text === '[0:40] un détail').depth === 1 && blocs.find((b) => b.text === '[0:31] Les règles').depth === 0);
+    verifie('niveau des titres garde (## = 2)', blocs.filter((b) => b.type === 'h').every((b) => b.level === 2));
     verifie('n’a pas coupe a la pause du milieu', blocs.length === 8, blocs.length);
     console.log('     (duree : ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
   }
@@ -114,6 +117,13 @@ const RESUME = [
     const blocs = await window.__yttoolsGemini.run('Résume.', 60000);
     verifie('Markdown brut relu', blocs.map((b) => b.type).join(' ') === 'h p h li li', blocs);
     verifie('gras retire', blocs.some((b) => b.text === '[0:05] Un point'));
+    const { window: w2 } = gemini({
+      morceaux: ['<pre><code>## Chapitres\n### Intro [0:00]\n- Le défi [0:12]\n  - un détail [0:20]\n</code></pre>'],
+      pause: 0
+    });
+    const b2 = await w2.__yttoolsGemini.run('Résume.', 60000);
+    verifie('Markdown brut : niveaux de titres et sous-puce indentee',
+      b2.map((b) => b.type + (b.level || '') + (b.type === 'li' ? b.depth : '')).join(' ') === 'h2 h3 li0 li1', b2);
   }
 
   console.log('\n3. Paragraphe tout en gras = titre');

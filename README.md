@@ -86,13 +86,13 @@ titre,chaine,debut,fin,debut_s,texte,date,date_iso,vues,vues_num,likes,multiplic
 
 Une fois la transcription copiée, un bouton **Résumer** apparaît à côté. Il envoie la transcription à **Gemini**, puis affiche le résumé **en haut de la colonne de droite**, à lire en même temps que la vidéo :
 
-- **En bref** en une phrase, puis un **Déroulé** : une ligne courte et horodatée par moment, environ une toutes les 90 s, pour voir d'un coup d'œil de quoi parle chaque passage ;
-- **À retenir** : deux ou trois idées clés, chacune avec le moment où elle est dite ;
-- chaque **timecode est cliquable** et amène la vidéo au bon moment ;
-- le point en cours de lecture est **surligné** au fil de la vidéo ;
+- **En bref**, en une ou deux phrases ;
+- puis la vidéo **chapitre par chapitre**. Chaque chapitre est numéroté, avec un titre court et 1 à 3 points qui disent l'essentiel. Si la vidéo a déjà des chapitres (ceux du créateur, sinon ceux de YouTube), le résumé suit ce découpage ;
+- les **timecodes ne sont que des références** : une petite pastille au bout de chaque titre et de chaque point. Un clic amène la vidéo au passage, et un clic sur le titre d'un chapitre mène à son début ;
+- le chapitre en cours de lecture est **surligné** au fil de la vidéo ;
 - le temps de la lecture, le **classement sur 10 et le panneau de vidIQ s'effacent** pour que le résumé soit côte à côte avec la vidéo — sur cette vidéo seulement : les suivantes les retrouvent, et fermer le résumé les rend aussi.
 
-Si Gemini oublie un timecode, l'extension retrouve le passage correspondant dans la transcription, sans nouvelle requête. Un timecode ainsi déduit s'affiche **encadré** plutôt que plein, pour qu'on sache que c'est une estimation.
+Si Gemini oublie une référence, l'extension retrouve le passage correspondant dans la transcription, sans nouvelle requête. Une référence ainsi déduite s'affiche **encadrée** plutôt que pleine, pour qu'on sache que c'est une estimation.
 
 Aucune clé d'API : c'est ta session Gemini qui répond. Une petite fenêtre Gemini s'ouvre le temps de la rédaction puis se referme toute seule — elle doit rester au premier plan, Gemini ne rédige pas dans un onglet caché. Il faut être connecté à [gemini.google.com](https://gemini.google.com) dans ce navigateur, et chaque résumé crée une conversation dans ton historique Gemini. Rouvrir le résumé d'une vidéo ne redemande rien.
 
@@ -100,11 +100,12 @@ Aucune clé d'API : c'est ta session Gemini qui répond. Une petite fenêtre Gem
 
 À côté de **Trier par**, un bouton **Résumer les commentaires**. YouTube n'en affiche qu'une vingtaine à la fois : l'extension fait défiler la page pour en charger une **centaine**, revient exactement où tu étais, puis les envoie à Gemini en **une seule demande**. Le résumé s'affiche juste sous l'en-tête :
 
-- **En bref** — le ressenti général, en une phrase ;
-- **La majorité** et **Une minorité** — ce que pensent la plupart des gens, et les avis moins répandus ;
-- **Ce que les gens demandent** — une suite, un sujet, une précision.
+- une **jauge verte et rouge** : la part d'avis positifs et négatifs, en pourcentage, parmi les commentaires qui donnent un avis (les questions et les blagues sans avis n'y comptent pas) ;
+- **Ce qui plaît** (en vert) : ce que disent les avis positifs ;
+- **Ce qui déplaît** (en rouge) : ce que disent les avis négatifs, ou « Aucune critique notable » ;
+- **Ce que les gens demandent** (en bleu) : une suite, un sujet, une précision.
 
-Des points globaux et courts, pas de citations : ça se lit en dix secondes.
+Des points courts, pas de paragraphes ni de citations : ça se lit en dix secondes. Les pourcentages sont l'estimation de Gemini, pas un comptage exact.
 
 Les likes et le nombre de réponses accompagnent chaque commentaire : un avis très aimé pèse plus qu'un autre. Les timecodes cités par le public deviennent cliquables.
 
