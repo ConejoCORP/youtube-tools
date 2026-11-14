@@ -159,11 +159,42 @@
   async function choisirDossier() {
     if (!peutEcrire()) throw sansAcces();
     const choisi = await global.showDirectoryPicker({ mode: 'readwrite', id: 'yttools' });
-    if (!(await estLeBonDossier(choisi))) {
-      throw new Error("ce dossier n'est pas celui de YouTube Tools : choisis celui où se trouve manifest.json");
-    }
+    const refus = await verifierDossier(choisi);
+    if (refus) throw new Error(refus);
     await memoriser(choisi);
     return choisi;
+  }
+
+  /**
+   * Est-ce LE dossier que le navigateur a charge, et pas une autre copie de
+   * YouTube Tools (un vieux zip decompresse ailleurs, par exemple) ? Une
+   * extension chargee depuis un dossier lit ses fichiers sur le disque : son
+   * manifest.json doit etre identique, octet pour octet, a celui du dossier
+   * choisi. Renvoie null si c'est bon, sinon la raison du refus.
+   */
+  async function verifierDossier(handle) {
+    let texte;
+    try {
+      texte = await (await (await handle.getFileHandle('manifest.json')).getFile()).text();
+    } catch {
+      return "ce dossier ne contient pas de manifest.json : choisis celui de YouTube Tools";
+    }
+    let m = {};
+    try { m = JSON.parse(texte); } catch { /* manifeste illisible : refuse ci-dessous */ }
+    if (!/youtube tools/i.test(String(m.name || ''))) {
+      return "ce dossier n'est pas celui de YouTube Tools : choisis celui où se trouve manifest.json";
+    }
+    let charge = null;
+    try {
+      charge = await (await global.fetch(global.chrome.runtime.getURL('manifest.json'), { cache: 'no-store' })).text();
+    } catch {
+      charge = null;   // impossible de comparer : on s'en tient au nom
+    }
+    if (charge !== null && charge !== texte) {
+      const v = String(m.version || '?');
+      return `ce dossier contient une autre copie de YouTube Tools${v !== installee() ? ` (version ${v}, alors que le navigateur a chargé la ${installee()})` : ''}, pas celle que le navigateur utilise : « Voir son emplacement » montre la bonne`;
+    }
+    return null;
   }
 
   async function dossier(progres) {

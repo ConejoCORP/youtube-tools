@@ -110,6 +110,18 @@
     }
   });
 
+  /** Ferme l'onglet de cette page (ouvert par l'extension, elle peut le fermer). */
+  function fermer() {
+    try {
+      chrome.tabs.getCurrent((t) => {
+        if (t && t.id !== undefined) chrome.tabs.remove(t.id);
+        else window.close();
+      });
+    } catch {
+      window.close();
+    }
+  }
+
   async function majDossier() {
     if (!U.peutEcrire()) { sansAcces(); return; }
     const nom = await U.dossierMemorise().catch(() => null);
@@ -125,7 +137,10 @@
     ui.choisir.disabled = true;
     try {
       const d = await U.choisirDossier();
-      suivi(`C'est noté : les mises à jour iront dans « ${d.name} ».`);
+      // Une mise a jour attend ? On reste, pour qu'elle puisse etre lancee.
+      const attendue = !!(annonce && annonce.disponible);
+      suivi(`C'est le bon dossier ✓ Les mises à jour iront dans « ${d.name} ».${attendue ? '' : ' Cette page va se fermer.'}`);
+      if (!attendue) setTimeout(fermer, 2500);
     } catch (e) {
       const nom = e && e.name;
       if (nom === 'AbortError' || nom === 'NotAllowedError') suivi('Aucun dossier choisi.');

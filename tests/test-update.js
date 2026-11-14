@@ -53,7 +53,7 @@ function dossier(fichiers, journal, bloques = []) {
 }
 
 /* ---------- environnement ---------- */
-function environnement({ installType = 'development', locale = '3.8.0', distant, pannes = [], sansPicker = false, brave = false }) {
+function environnement({ installType = 'development', locale = '3.8.0', distant, pannes = [], sansPicker = false, brave = false, charge }) {
   const storage = {};
   const requetes = [];
   const idb = {};
@@ -62,6 +62,10 @@ function environnement({ installType = 'development', locale = '3.8.0', distant,
   let ouvertures = 0;
 
   const fetch = async (url, opts) => {
+    if (url.startsWith('chrome-extension://')) {
+      if (charge === undefined) throw new Error('pas de copie chargee simulee');
+      return { ok: true, text: async () => charge };
+    }
     requetes.push({ url, opts });
     if (pannes.some((p) => url.includes(p))) return { ok: false, status: 404 };
     if (url.includes('/main/version.json')) return { ok: true, json: async () => distant };
@@ -93,7 +97,7 @@ function environnement({ installType = 'development', locale = '3.8.0', distant,
   const global = {
     fetch, indexedDB, TextEncoder, TextDecoder, Uint8Array, setTimeout, Date, JSON, Promise, Error, Array, String, Object, encodeURIComponent,
     chrome: {
-      runtime: { getManifest: () => ({ version: locale }) },
+      runtime: { getManifest: () => ({ version: locale }), getURL: (p) => 'chrome-extension://abc/' + p },
       management: { getSelf: async () => ({ installType }) },
       storage: { local: {
         get: async (k) => ({ [k]: storage[k] }),
@@ -281,6 +285,29 @@ const bonDossier = (journal, extra = {}, bloques = []) =>
 
     const g = environnement({ distant: DISTANT, brave: true });
     verifie('Brave avec le réglage activé : accès normal', g.U.peutEcrire() === true);
+  }
+
+  console.log('\n11. Le dossier choisi est-il celui que le navigateur a charge ?');
+  {
+    const MANIF = JSON.stringify({ name: 'YouTube Tools', version: '3.8.0' });
+    const ok = environnement({ distant: DISTANT, charge: MANIF });
+    ok.choisir(bonDossier(ok.journal));
+    let err = null;
+    try { await ok.U.choisirDossier(); } catch (x) { err = x; }
+    verifie('même manifest.json que l’extension chargée : accepté', !err, err && err.message);
+
+    const vieux = environnement({ distant: DISTANT, charge: MANIF });
+    vieux.choisir(dossier({ 'manifest.json': JSON.stringify({ name: 'YouTube Tools', version: '3.5.0' }) }, vieux.journal));
+    err = null;
+    try { await vieux.U.choisirDossier(); } catch (x) { err = x; }
+    verifie('vieille copie ailleurs (3.5.0) : refusée, versions citées', err && /autre copie/.test(err.message) && /3\.5\.0/.test(err.message) && /3\.8\.0/.test(err.message), err && err.message);
+    verifie('… et pas mémorisée', (await vieux.U.dossierMemorise()) === null);
+
+    const jumelle = environnement({ distant: DISTANT, charge: MANIF });
+    jumelle.choisir(dossier({ 'manifest.json': JSON.stringify({ name: 'YouTube Tools', version: '3.8.0', description: 'modifiée' }) }, jumelle.journal));
+    err = null;
+    try { await jumelle.U.choisirDossier(); } catch (x) { err = x; }
+    verifie('même version mais autre copie : refusée aussi', err && /autre copie/.test(err.message) && !/version 3/.test(err.message), err && err.message);
   }
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));
