@@ -1,6 +1,6 @@
 {
-  "version": "3.12.4",
-  "ref": "50cbde5411e57ba5fdd7bf40e9bc41f4fb49ca14",
+  "version": "3.13.0",
+  "ref": "74147ae89a7c8ce397150225d5ff24720d746194",
   "files": [
     "background.js",
     "capture.css",
@@ -44,6 +44,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Le choix du dossier vérifie maintenant que c'est bien celui que le navigateur utilise (et pas une autre copie), puis la page se ferme toute seule.",
+  "notes": "Transcription : nouvelles colonnes multiplicateur et multiplicateur_source. Le multiplicateur vient de vidIQ quand son panneau l'affiche, sinon l'extension le calcule (vues / médiane des 9 vidéos précédentes de la chaîne, au même âge), avec la liste du classement sur 10.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
