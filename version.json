@@ -1,6 +1,6 @@
 {
-  "version": "3.13.1",
-  "ref": "4748ed1991f56ce51f06dda31d51c4a4457cd8de",
+  "version": "3.14.0",
+  "ref": "01d190da54a786bd71534d71c8eed5460bd82ab3",
   "files": [
     "background.js",
     "capture.css",
@@ -35,6 +35,8 @@
     "studio.css",
     "summary.css",
     "summary.js",
+    "tags.css",
+    "tags.js",
     "transcript.css",
     "transcript.js",
     "update-core.js",
@@ -44,6 +46,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Transcription : le multiplicateur est maintenant calculé aussi pour les vidéos anciennes, quand vidIQ affiche N/A. La vidéo est comparée aux vidéos de la chaîne les plus proches en âge (« calculé (approx.) »). Classement sur 10 : une vidéo ancienne ne fait plus relire toute la liste de la chaîne à chaque visite.",
+  "notes": "Tags de la vidéo : affichés tout en bas de la description (repliée ou dépliée), avec leur longueur sur 500 et un bouton Copier. Aucune requête. Ils s'ajoutent aussi au CSV de la transcription (colonne tags).",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
