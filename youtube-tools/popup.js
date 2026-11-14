@@ -505,6 +505,9 @@ function bandeauMaj(info) {
   if (dispo) $('majTexte').textContent = `Version ${info.latest} disponible`;
 }
 
+// Parametres > « Mises a jour » : la meme page, pour choisir le dossier quand on veut.
+$('ouvrirMaj').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('update.html') }));
+
 $('majBtn').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('update.html') });
   window.close();

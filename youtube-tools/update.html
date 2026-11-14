@@ -28,6 +28,18 @@
     <section class="maj-dossier" aria-labelledby="dossierTitre">
       <h2 id="dossierTitre">Dossier de l'extension</h2>
       <p id="dossierEtat" class="maj-dossier-etat">…</p>
+      <div id="sansAcces" class="maj-sans-acces" hidden>
+        <p id="sansAccesTexte"></p>
+        <ol id="sansAccesBrave" hidden>
+          <li>Copie cette adresse et colle-la dans la barre d'adresse de Brave :
+            <span class="maj-adresse"><code id="drapeau"></code>
+              <button id="copierDrapeau" class="maj-lien" type="button">Copier</button></span>
+          </li>
+          <li>À la ligne <b>File System Access API</b>, choisis <b>Enabled</b>.</li>
+          <li>Clique <b>Relaunch</b> en bas : Brave redémarre et rouvre tes onglets.</li>
+          <li>Reviens ici (popup → Paramètres → <b>Mises à jour</b>) et clique <b>Choisir le dossier</b>.</li>
+        </ol>
+      </div>
       <button id="choisirDossier" class="ghost" type="button">Choisir le dossier</button>
       <p class="hint">
         Tu ne sais plus où il est ?

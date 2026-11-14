@@ -129,6 +129,20 @@
   }
 
   /**
+   * Le navigateur laisse-t-il une page choisir et modifier un dossier ?
+   * Chrome et Edge oui. Brave non par defaut : la fonction n'existe pas tant
+   * que brave://flags/#file-system-access-api n'est pas active.
+   */
+  const peutEcrire = () => typeof global.showDirectoryPicker === 'function';
+  const estBrave = () => !!(global.navigator && global.navigator.brave);
+  const DRAPEAU_BRAVE = 'brave://flags/#file-system-access-api';
+  function sansAcces() {
+    return Object.assign(new Error(estBrave()
+      ? `Brave bloque l'accès aux dossiers : active-le dans ${DRAPEAU_BRAVE}, puis relance Brave`
+      : "ce navigateur ne laisse pas une extension modifier un dossier : mets à jour à la main"), { name: 'SansAcces' });
+  }
+
+  /**
    * Nom du dossier deja memorise (« youtube-tools »), ou null. Ne demande
    * aucune autorisation : sert seulement a dire a l'utilisateur ou on en est.
    */
@@ -143,7 +157,7 @@
    * l'on vient de decompresser l'extension.
    */
   async function choisirDossier() {
-    if (!global.showDirectoryPicker) throw new Error("ce navigateur ne permet pas d'écrire des fichiers");
+    if (!peutEcrire()) throw sansAcces();
     const choisi = await global.showDirectoryPicker({ mode: 'readwrite', id: 'yttools' });
     if (!(await estLeBonDossier(choisi))) {
       throw new Error("ce dossier n'est pas celui de YouTube Tools : choisis celui où se trouve manifest.json");
@@ -179,7 +193,7 @@
    * dans ce cas aucun fichier n'a ete modifie si l'echec vient du reseau.
    */
   async function installer(info, progres) {
-    if (!global.showDirectoryPicker) throw new Error("ce navigateur ne permet pas d'écrire des fichiers");
+    if (!peutEcrire()) throw sansAcces();
     const files = info.files.filter(cheminSur);
     if (!files.length || !files.includes('manifest.json')) throw new Error('liste de fichiers invalide');
 
@@ -247,6 +261,6 @@
 
   global.__yttoolsUpdate = {
     RELEASES_URL, comparer, installee, estDossierLocal, verifier, dernierConnu, installer, cheminSur,
-    dossierMemorise, choisirDossier
+    dossierMemorise, choisirDossier, peutEcrire, estBrave, DRAPEAU_BRAVE
   };
 })(typeof self !== 'undefined' ? self : globalThis);

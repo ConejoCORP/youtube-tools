@@ -53,7 +53,7 @@ function dossier(fichiers, journal, bloques = []) {
 }
 
 /* ---------- environnement ---------- */
-function environnement({ installType = 'development', locale = '3.8.0', distant, pannes = [] }) {
+function environnement({ installType = 'development', locale = '3.8.0', distant, pannes = [], sansPicker = false, brave = false }) {
   const storage = {};
   const requetes = [];
   const idb = {};
@@ -102,6 +102,8 @@ function environnement({ installType = 'development', locale = '3.8.0', distant,
     },
     showDirectoryPicker: async () => { ouvertures++; if (!choix) throw Object.assign(new Error('annule'), { name: 'AbortError' }); return choix; }
   };
+  if (sansPicker) delete global.showDirectoryPicker;
+  global.navigator = brave ? { brave: { isBrave: async () => true } } : {};
   global.self = global;
   vm.createContext(global);
   vm.runInContext(fs.readFileSync(DIR + 'update-core.js', 'utf8'), global);
@@ -258,6 +260,27 @@ const bonDossier = (journal, extra = {}, bloques = []) =>
     await e.U.installer(info, () => {});
     verifie('mise à jour suivante : directement dans ce dossier, sans le redemander',
       e.ouvertures() === avant && e.journal.includes('manifest.json'), { fenetres: e.ouvertures() - avant, ecrits: e.journal });
+  }
+
+  console.log('\n10. Brave : acces aux dossiers bloque par defaut');
+  {
+    const e = environnement({ distant: DISTANT, sansPicker: true, brave: true });
+    verifie('Brave sans le réglage : on le sait avant de cliquer', e.U.peutEcrire() === false && e.U.estBrave() === true);
+    let err = null;
+    try { await e.U.choisirDossier(); } catch (x) { err = x; }
+    verifie('message qui dit quoi activer', err && err.name === 'SansAcces' && err.message.includes('brave://flags/#file-system-access-api'), err && err.message);
+    const info = await e.U.verifier();
+    err = null;
+    try { await e.U.installer(info, () => {}); } catch (x) { err = x; }
+    verifie('mise à jour : même explication, rien d’écrit', err && err.name === 'SansAcces' && e.journal.length === 0);
+
+    const f = environnement({ distant: DISTANT, sansPicker: true });
+    err = null;
+    try { await f.U.choisirDossier(); } catch (x) { err = x; }
+    verifie('autre navigateur sans accès : mise à jour à la main', err && /à la main/.test(err.message) && !/brave/i.test(err.message));
+
+    const g = environnement({ distant: DISTANT, brave: true });
+    verifie('Brave avec le réglage activé : accès normal', g.U.peutEcrire() === true);
   }
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));

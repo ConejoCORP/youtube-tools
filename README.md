@@ -53,7 +53,7 @@ Parce que ce n'est jamais comme ça qu'elle sera vue. Ce qui compte, c'est la li
 
 Ensuite, plus besoin de retélécharger ni de chercher le dossier : quand une nouvelle version sort, une pastille **MAJ** apparaît sur l'icône et le popup propose **Mettre à jour**. L'extension s'installe dans le dossier mémorisé.
 
-*(Sur Edge, Brave ou Opera : `edge://extensions`, `brave://extensions`, etc. — la marche à suivre est identique.)*
+*(Sur Edge, Brave ou Opera : `edge://extensions`, `brave://extensions`, etc. — la marche à suivre est identique. **Brave** bloque par défaut l'accès aux dossiers dont la mise à jour automatique a besoin : la page Bienvenue explique comment l'activer, une fois pour toutes, dans `brave://flags/#file-system-access-api`.)*
 
 Pour l'aperçu de miniature : clique sur l'icône, renseigne la chaîne, glisse ou colle ta miniature, saisis le titre, puis **Aperçu**. L'onglet YouTube passe au premier plan avec ta carte injectée. **Retirer l'aperçu** l'enlève ; la flèche circulaire remet les champs à zéro.
 
@@ -201,6 +201,10 @@ Au démarrage du navigateur et à chaque ouverture du popup, l'extension lit [`v
 3. **Mettre à jour maintenant** télécharge tous les fichiers, les écrit dans le dossier de l'extension, puis la recharge. Rafraîchis ensuite tes onglets YouTube (F5).
 
 Aucune API ne permet à une extension de réécrire ses propres fichiers : on passe par l'accès aux fichiers du navigateur. Il faut donc lui montrer **une fois** le dossier `youtube-tools` (celui qui contient `manifest.json`) : dès l'installation, sur la page **Bienvenue**, ou à la première mise à jour si tu l'as passée. Il est ensuite mémorisé ; la page de mise à jour dit lequel et permet d'en choisir un autre. Chrome peut encore te demander de **confirmer l'accès** d'un clic (s'il propose **Autoriser à chaque visite**, choisis-le) : il ne laisse aucune extension modifier des fichiers sans que tu l'aies vu.
+
+La page de mise à jour s'ouvre aussi depuis le popup, **Paramètres → Mises à jour**.
+
+Sur **Brave**, l'accès aux dossiers est coupé par défaut : ouvre `brave://flags/#file-system-access-api`, mets **File System Access API** sur **Enabled** et relance Brave. Sans ça, la page le détecte et l'explique, et les mises à jour restent possibles à la main.
 
 Tu as oublié où est le dossier ? Le lien **Voir son emplacement** de la page de mise à jour ouvre la fiche de l'extension dans `chrome://extensions` : le chemin complet y est écrit, à « Chargée depuis ».
 

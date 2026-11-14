@@ -82,7 +82,36 @@
 
   /* ------------------------------------------------- dossier de l'extension */
 
+  /**
+   * Brave (par defaut) et certains navigateurs ne laissent pas une page
+   * modifier un dossier : au lieu d'un bouton qui echouerait, on explique.
+   */
+  function sansAcces() {
+    const brave = U.estBrave();
+    $('sansAcces').hidden = false;
+    $('sansAccesBrave').hidden = !brave;
+    $('drapeau').textContent = U.DRAPEAU_BRAVE;
+    $('sansAccesTexte').textContent = brave
+      ? "Brave bloque par défaut l'accès aux dossiers dont la mise à jour automatique a besoin. Pour l'activer, une fois pour toutes :"
+      : "Ce navigateur ne laisse pas une extension modifier son dossier : les mises à jour se font à la main, avec le bouton ci-dessous.";
+    ui.dossierEtat.hidden = true;
+    ui.choisir.hidden = true;
+    // Sans acces, « Mettre a jour maintenant » echouerait : on garde le telechargement a la main.
+    ui.bouton.classList.add('maj-cache');
+    ui.manuel.className = brave ? 'ghost' : 'cta';
+  }
+
+  $('copierDrapeau').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(U.DRAPEAU_BRAVE);
+      $('copierDrapeau').textContent = 'Copié !';
+    } catch {
+      $('copierDrapeau').textContent = 'Sélectionne-la et copie-la';
+    }
+  });
+
   async function majDossier() {
+    if (!U.peutEcrire()) { sansAcces(); return; }
     const nom = await U.dossierMemorise().catch(() => null);
     ui.dossierEtat.textContent = nom
       ? `Enregistré : « ${nom} ». Les mises à jour s'y installent sans que tu aies à le chercher.`

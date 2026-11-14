@@ -45,6 +45,14 @@ body.page-maj {
 .maj-dossier-etat { margin: 0; line-height: 1.45; }
 .maj-dossier .cta { margin-top: 12px; }
 
+.maj-sans-acces { line-height: 1.45; }
+.maj-sans-acces p { margin: 0 0 8px; }
+.maj-sans-acces ol { margin: 0; padding-left: 20px; }
+.maj-sans-acces li { margin-bottom: 6px; }
+.maj-adresse { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.maj-adresse code { padding: 3px 6px; border-radius: 6px; background: var(--accent-soft); user-select: all; }
+.page-maj .maj-cache { display: none; }
+
 .maj-lien {
   padding: 0;
   border: 0;

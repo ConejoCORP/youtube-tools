@@ -329,3 +329,4 @@ input[type="text"]:focus { border-bottom-color: var(--accent); }
   line-height: 1.45;
 }
 .reglages-pied { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 11px; }
+.reglages-lien { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
