@@ -45,8 +45,8 @@ svg.yttools-rz-on g.aplos-draw-area > :not(.yttools-rz-layer) { visibility: hidd
 .yttools-rz-lecture { stroke: var(--ytcp-text-primary, #0d0d0d); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
 .yttools-rz-survol { pointer-events: none; }
 .yttools-rz-repere { stroke: var(--ytcp-text-secondary, #606060); stroke-width: 1; }
-.yttools-rz-repere-point { stroke: var(--ytcp-general-background-a, #fff); stroke-width: 2; }
-.yttools-rz-bulle rect { fill: var(--ytcp-general-background-a, #fff); stroke: var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .15)); }
+.yttools-rz-repere-point { stroke: var(--ytcp-brand-background-solid, #fff); stroke-width: 2; }
+.yttools-rz-bulle rect { fill: var(--ytcp-brand-background-solid, #fff); stroke: var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .15)); }
 .yttools-rz-bulle text { fill: var(--ytcp-text-primary, #0d0d0d); font: 500 12px "Roboto", "Arial", sans-serif; }
 
 /* ------------------------------------------ classement sur 10 du tableau de bord */
@@ -87,7 +87,7 @@ svg.yttools-rz-on g.aplos-draw-area > :not(.yttools-rz-layer) { visibility: hidd
 }
 
 #yttools-top10 .yttools-t10-onglets button[aria-selected="true"] {
-  background: var(--ytcp-general-background-a, #fff);
+  background: var(--ytcp-brand-background-solid, #fff);
   color: var(--ytcp-text-primary, #0d0d0d);
   box-shadow: 0 1px 2px rgba(0, 0, 0, .15);
 }
@@ -131,3 +131,161 @@ svg.yttools-rz-on g.aplos-draw-area > :not(.yttools-rz-layer) { visibility: hidd
 #yttools-top10 .yttools-t10-ligne img { width: 48px; height: 27px; flex-shrink: 0; border-radius: 4px; object-fit: cover; background: var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .08)); }
 #yttools-top10 .yttools-t10-nom { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #yttools-top10 .yttools-t10-vues { flex-shrink: 0; color: var(--ytcp-text-secondary, #606060); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------ heure exacte de publication (Contenu) */
+
+#yttools-heure-bulle {
+  position: fixed;
+  z-index: 2300;
+  max-width: 320px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--ytcp-text-primary, #0d0d0d);
+  color: var(--ytcp-brand-background-solid, #fff);
+  font: 500 12px/16px "Roboto", "Arial", sans-serif;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ------------------------------------ video similaire de plusieurs Shorts */
+
+.yttools-sim-entree {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  outline: none;
+}
+
+.yttools-sim-entree:hover,
+.yttools-sim-entree:focus-visible { background: var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .06)); }
+
+/* Pendant l'edition, les menus et boutons de Studio laissent la place aux notres. */
+.yttools-sim-edition .toolbar-wrapper,
+.yttools-sim-edition .chain-edit-button-container { display: none !important; }
+
+.yttools-sim-actions { display: flex; gap: 8px; margin-left: auto; padding-right: 16px; }
+
+.yttools-sim-btn {
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  font: 500 14px/20px "Roboto", "Arial", sans-serif;
+  cursor: pointer;
+}
+
+.yttools-sim-btn:disabled { opacity: .4; cursor: default; }
+.yttools-sim-tonal { background: rgba(127, 127, 127, .22); color: inherit; }
+.yttools-sim-plein { background: var(--ytcp-text-primary, #0d0d0d); color: var(--ytcp-brand-background-solid, #fff); }
+.yttools-sim-btn.yttools-sim-bleu { background: var(--ytcp-call-to-action, #065fd4); color: #fff; }
+.yttools-sim-texte-btn { background: none; color: var(--ytcp-text-primary, #0d0d0d); }
+.yttools-sim-texte-btn:hover:not(:disabled) { background: var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .06)); }
+
+.yttools-sim-editeur {
+  padding: 16px 24px 20px;
+  border-bottom: 1px solid var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .1));
+  color: var(--ytcp-text-primary, #0d0d0d);
+  font: 14px/20px "Roboto", "Arial", sans-serif;
+}
+
+.yttools-sim-tete { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.yttools-sim-titre { font-weight: 500; }
+
+.yttools-sim-icone {
+  display: flex;
+  padding: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.yttools-sim-icone:hover { background: var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .06)); }
+.yttools-sim-editeur svg, .yttools-sim-dialogue svg { width: 20px; height: 20px; fill: currentColor; display: block; }
+
+.yttools-sim-ligne { display: flex; flex-wrap: wrap; gap: 16px; }
+
+.yttools-sim-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  min-width: 240px;
+  padding: 8px 12px;
+  border: 1px solid var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .2));
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.yttools-sim-champ:focus-within, button.yttools-sim-champ:focus-visible { border-color: var(--ytcp-call-to-action, #065fd4); outline: none; }
+.yttools-sim-video { flex: 1; cursor: pointer; }
+.yttools-sim-invalide { border-color: #cc0000; }
+.yttools-sim-etiquette { color: var(--ytcp-text-secondary, #606060); font-size: 12px; line-height: 16px; }
+
+.yttools-sim-select, .yttools-sim-saisie {
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.yttools-sim-select option { color: #0d0d0d; }
+.yttools-sim-valeur { display: flex; align-items: center; gap: 10px; min-height: 20px; }
+.yttools-sim-miniature { width: 64px; height: 36px; border-radius: 4px; object-fit: cover; flex: none; }
+.yttools-sim-texte { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.yttools-sim-vide { color: var(--ytcp-call-to-action, #065fd4); font-weight: 500; }
+.yttools-sim-note { margin: 12px 0 0; color: var(--ytcp-text-secondary, #606060); font-size: 12px; }
+
+.yttools-sim-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .5);
+}
+
+.yttools-sim-dialogue {
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--ytcp-brand-background-solid, #fff);
+  color: var(--ytcp-text-primary, #0d0d0d);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .3);
+  font: 14px/20px "Roboto", "Arial", sans-serif;
+}
+
+.yttools-sim-dialogue h2 { margin: 0 0 12px; font: 500 20px/28px "Roboto", "Arial", sans-serif; }
+.yttools-sim-texte-dialogue { margin: 0 0 8px; }
+
+.yttools-sim-liste {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 240px;
+  list-style: none;
+  border: 1px solid var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .1));
+  border-radius: 8px;
+}
+
+.yttools-sim-liste li { display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
+.yttools-sim-liste li + li { border-top: 1px solid var(--ytcp-ten-percent-layer, rgba(0, 0, 0, .06)); }
+.yttools-sim-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yttools-sim-statut { display: flex; flex: none; width: 20px; height: 20px; }
+.yttools-sim-liste li[data-etat="attente"] .yttools-sim-statut::before { content: "…"; margin: auto; color: var(--ytcp-text-secondary, #606060); }
+.yttools-sim-liste li[data-etat="ok"] .yttools-sim-statut { color: #2ba640; }
+.yttools-sim-liste li[data-etat="erreur"] .yttools-sim-statut { color: #e53935; }
+.yttools-sim-info { margin: 12px 0 0; color: var(--ytcp-text-secondary, #606060); font-size: 13px; }
+.yttools-sim-pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }

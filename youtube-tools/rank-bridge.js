@@ -9,7 +9,8 @@
  * ou vivent les autres scripts de l'extension.
  *
  * Ce script ne fait QUE recopier quelques informations publiques dans un
- * attribut du document, ou rank.js vient les lire :
+ * attribut du document, ou rank.js (classement) et heure-video.js (heure de
+ * mise en ligne) viennent les lire :
  *   id, chaine, titre, vues, date de publication, direct ou non, Short ou non,
  *   ainsi que la cle et la version d'API que la page utilise deja.
  * Il n'emet aucune requete, ne lit aucun cookie et ne touche a rien d'autre.

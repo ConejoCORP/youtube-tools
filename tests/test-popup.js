@@ -65,10 +65,10 @@ const clic = (w, el) => el.dispatchEvent(new w.MouseEvent('click', { bubbles: tr
     const tuiles = () => Array.from(doc.querySelectorAll('#reglagesListe .tuile'));
     const sections = () => Array.from(doc.querySelectorAll('#reglagesListe .reglages-section')).map((s) => s.textContent);
     verifie('onglet YouTube par défaut', doc.querySelector('.site[data-site=youtube]').getAttribute('aria-selected') === 'true');
-    verifie('YouTube : 5 cases, en 2 sections', tuiles().length === 5 && sections().join('|') === 'Page de la vidéo|Partout sur YouTube', sections());
+    verifie('YouTube : 7 cases, en 2 sections', tuiles().length === 7 && sections().join('|') === 'Page de la vidéo|Partout sur YouTube', sections());
     const etat = () => Object.fromEntries(tuiles().map((t) => [t.dataset.cle, t.getAttribute('aria-checked')]));
     verifie('états par défaut : tout actif sauf « Enregistrer un fichier »',
-      JSON.stringify(etat()) === JSON.stringify({ transcriptButton: 'true', captureButton: 'true', rankBadge: 'true', videosButton: 'true', saveAsFile: 'false' }), etat());
+      JSON.stringify(etat()) === JSON.stringify({ transcriptButton: 'true', captureButton: 'true', rankBadge: 'true', watchTime: 'true', videosButton: 'true', playlistSearch: 'true', saveAsFile: 'false' }), etat());
     verifie('chaque case : icône + nom, et c’est un bouton à bascule', tuiles().every((t) => t.querySelector('svg path') && t.querySelector('.tuile-nom').textContent && t.getAttribute('role') === 'switch'));
 
     const aide = doc.getElementById('reglagesAide');
@@ -87,9 +87,9 @@ const clic = (w, el) => el.dispatchEvent(new w.MouseEvent('click', { bubbles: tr
     verifie('clic : la case s’active', tuiles().find((t) => t.dataset.cle === 'saveAsFile').getAttribute('aria-checked') === 'true');
 
     clic(window, doc.querySelector('.site[data-site=studio]'));
-    verifie('onglet Studio : 4 cases, en 2 sections',
-      tuiles().map((t) => t.dataset.cle).join(',') === 'hideRevenue,studioTop10,retentionZoom,viewsTrend' &&
-      sections().join('|') === 'Général|Pages de Studio', { t: tuiles().map((t) => t.dataset.cle), s: sections() });
+    verifie('onglet Studio : 6 cases, en 3 sections',
+      tuiles().map((t) => t.dataset.cle).join(',') === 'hideRevenue,studioTop10,retentionZoom,viewsTrend,publishTime,shortsRelated' &&
+      sections().join('|') === 'Général|Tableau de bord et statistiques|Page Contenu', { t: tuiles().map((t) => t.dataset.cle), s: sections() });
     verifie('« Masquer les revenus » coupé par défaut', tuiles()[0].getAttribute('aria-checked') === 'false');
 
     doc.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

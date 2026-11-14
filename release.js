@@ -61,7 +61,7 @@ const files = sh('git', ['ls-files', DOSSIER]).split('\n')
   .filter((f) => f && !f.startsWith('tests/'));
 const INFO = path.join(RACINE, 'version.json');
 const info = JSON.stringify({ version, ref, files, notes,
-  download: 'https://github.com/StundZow/youtube-tools/releases/latest' }, null, 2) + '\n';
+  download: 'https://github.com/ConejoCORP/youtube-tools/releases/latest' }, null, 2) + '\n';
 if (!fs.existsSync(INFO) || fs.readFileSync(INFO, 'utf8') !== info) {
   fs.writeFileSync(INFO, info);
   sh('git', ['add', 'version.json']);
@@ -98,5 +98,5 @@ if (existe) {
   console.log(`release ${tag} creee`);
 }
 
-console.log('telechargement : https://github.com/StundZow/youtube-tools/releases/latest/download/'
+console.log('telechargement : https://github.com/ConejoCORP/youtube-tools/releases/latest/download/'
   + DOSSIER + '.zip');

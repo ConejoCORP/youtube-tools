@@ -101,7 +101,7 @@ function monde({ urlChargee = 'https://gemini.google.com/app' } = {}) {
     await new Promise((r) => setTimeout(r, 50));
     verifie('pastille MAJ quand GitHub annonce 3.9.0', m.badge.texte === 'MAJ', m.badge.texte);
     verifie('une seule requete, vers GitHub, sans cookie',
-      m.reseau.length === 1 && m.reseau[0].url.startsWith('https://raw.githubusercontent.com/StundZow/youtube-tools/main/version.json')
+      m.reseau.length === 1 && m.reseau[0].url.startsWith('https://raw.githubusercontent.com/ConejoCORP/youtube-tools/main/version.json')
       && m.reseau[0].o.credentials === 'omit', m.reseau);
   }
 

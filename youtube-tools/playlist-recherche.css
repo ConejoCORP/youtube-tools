@@ -1,0 +1,80 @@
+/* YouTube Tools — recherche dans une playlist. Couleurs : variables de
+   YouTube, qui suivent deja son theme clair ou sombre. */
+
+#yttools-pl-recherche {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  margin: 0 24px 12px 36px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--yt-spec-10-percent-layer, rgba(0, 0, 0, .18));
+  border-radius: 20px;
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+/* Nouvelle mise en page : aligne sur les boutons Tous / Vidéos / Shorts. */
+yt-item-section-renderer > #yttools-pl-recherche { margin-left: 0; }
+
+#yttools-pl-recherche:focus-within { border-color: var(--yt-spec-call-to-action, #065fd4); }
+
+#yttools-pl-recherche svg { width: 20px; height: 20px; display: block; fill: currentColor; }
+
+.yttools-pl-loupe { display: flex; color: var(--yt-spec-text-secondary, #606060); }
+
+#yttools-pl-recherche input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: 400 14px/20px "Roboto", "Arial", sans-serif;
+}
+
+#yttools-pl-recherche input::placeholder { color: var(--yt-spec-text-secondary, #606060); opacity: 1; }
+#yttools-pl-recherche input::-webkit-search-cancel-button { display: none; }
+
+.yttools-pl-compte {
+  flex: none;
+  color: var(--yt-spec-text-secondary, #606060);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.yttools-pl-effacer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.yttools-pl-effacer[hidden] { display: none; }
+.yttools-pl-effacer:hover { background: var(--yt-spec-10-percent-layer, rgba(0, 0, 0, .1)); }
+
+.yttools-pl-cache { display: none !important; }
+
+/* Pendant une recherche, le repere de chargement de YouTube est mis dans
+   l'ecran (invisible) : YouTube charge alors la suite de la playlist. */
+html.yttools-pl-tout-charger ytd-playlist-video-list-renderer ytd-continuation-item-renderer,
+html.yttools-pl-tout-charger ytd-browse[page-subtype="playlist"] yt-continuation-item-view-model {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

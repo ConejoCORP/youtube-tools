@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "YouTube Tools",
   "version": "3.12.0",
-  "description": "Boîte à outils YouTube : aperçu de miniature dans le vrai feed, transcription, résumés de la vidéo et des commentaires par Gemini, export CSV des vidéos, classement sur 10 et outils pour YouTube Studio.",
+  "description": "Boîte à outils YouTube : aperçu de miniature dans le vrai feed, transcription, résumés par Gemini, export CSV, classement sur 10, heure exacte de mise en ligne, recherche dans les playlists et outils pour YouTube Studio.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -45,7 +45,9 @@
         "videos.js",
         "capture.js",
         "rank-core.js",
-        "rank.js"
+        "rank.js",
+        "heure-video.js",
+        "playlist-recherche.js"
       ],
       "css": [
         "content.css",
@@ -53,7 +55,8 @@
         "summary.css",
         "videos.css",
         "capture.css",
-        "rank.css"
+        "rank.css",
+        "playlist-recherche.css"
       ],
       "run_at": "document_idle",
       "all_frames": false
@@ -79,12 +82,25 @@
         "studio-revenus.js",
         "studio-tendance.js",
         "studio-retention.js",
-        "studio-top10.js"
+        "studio-top10.js",
+        "studio-heure.js",
+        "studio-similaire.js"
       ],
       "css": [
         "studio.css"
       ],
       "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://studio.youtube.com/*"
+      ],
+      "js": [
+        "studio-page.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_idle",
       "all_frames": false
     }
   ],

@@ -133,7 +133,7 @@ const bonDossier = (journal, extra = {}, bloques = []) =>
     const r = await e.U.verifier();
     verifie('nouvelle version detectee', r && r.disponible && r.latest === '3.9.0', r);
     verifie('requete sans cookie ni cache', e.requetes[0].opts.credentials === 'omit' && e.requetes[0].opts.cache === 'no-store');
-    verifie('uniquement raw.githubusercontent.com', e.requetes.every((q) => q.url.startsWith('https://raw.githubusercontent.com/StundZow/youtube-tools/')));
+    verifie('uniquement raw.githubusercontent.com', e.requetes.every((q) => q.url.startsWith('https://raw.githubusercontent.com/ConejoCORP/youtube-tools/')));
     verifie('resultat memorise', e.storage.yttoolsUpdate && e.storage.yttoolsUpdate.latest === '3.9.0');
 
     const a = environnement({ distant: DISTANT, locale: '3.9.0' });

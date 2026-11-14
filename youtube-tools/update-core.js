@@ -20,7 +20,7 @@
  * Aucune permission en plus : ce domaine repond a toutes les origines (CORS *).
  */
 (function (global) {
-  const OWNER = 'StundZow';
+  const OWNER = 'ConejoCORP';
   const REPO = 'youtube-tools';
   const DOSSIER = 'youtube-tools';            // dossier de l'extension dans le depot
   const RAW = `https://raw.githubusercontent.com/${OWNER}/${REPO}`;

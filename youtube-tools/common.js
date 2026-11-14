@@ -26,7 +26,11 @@
     hideRevenue: false,       // Studio : flouter les montants
     viewsTrend: true,         // Studio : fleches de tendance a cote des vues (page Contenu)
     retentionZoom: true,      // Studio : zoom a la molette dans le graphique de retention
-    studioTop10: true         // Studio : classement sur 10, onglets Videos / Shorts (interroge YouTube)
+    studioTop10: true,        // Studio : classement sur 10, onglets Videos / Shorts (interroge YouTube)
+    watchTime: true,          // heure exacte de mise en ligne apres la date, sous la video
+    playlistSearch: true,     // champ de recherche en haut d une playlist
+    publishTime: true,        // Studio : heure exacte de publication au survol d une date (Contenu)
+    shortsRelated: true       // Studio : video similaire de plusieurs Shorts (seule fonction avec la session)
   };
 
   let current = { ...DEFAULTS };

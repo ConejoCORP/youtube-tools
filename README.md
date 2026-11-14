@@ -6,7 +6,7 @@
 
 Teste ta miniature, copie une transcription, exporte un feed, situe une vidéo dans sa chaîne, lis mieux YouTube Studio — **sans jamais quitter YouTube**.
 
-[**⬇ Télécharger l'extension**](https://github.com/StundZow/youtube-tools/releases/latest/download/youtube-tools.zip) · [Releases](https://github.com/StundZow/youtube-tools/releases)
+[**⬇ Télécharger l'extension**](https://github.com/ConejoCORP/youtube-tools/releases/latest/download/youtube-tools.zip) · [Releases](https://github.com/ConejoCORP/youtube-tools/releases)
 
 Chrome · Edge · Brave · Opera
 
@@ -36,14 +36,16 @@ Parce que ce n'est jamais comme ça qu'elle sera vue. Ce qui compte, c'est la li
 - 📸 **Capture d'écran de la vidéo** — un bouton dans le lecteur, image à la résolution réelle, copiée en un clic
 - 💾 **Export des vidéos d'une page** — depuis la barre du haut, sur toutes les pages YouTube
 - 🏆 **Classement sur 10** — où se situe la vidéo parmi les 10 dernières de sa chaîne, à âge égal
-- 🎬 **Outils YouTube Studio** — classement Vidéos / Shorts séparés, flèches de tendance à côté des vues, zoom dans la rétention, revenus masqués
+- 🕒 **Heure exacte de mise en ligne** — sous la vidéo, juste après la date
+- 🔎 **Recherche dans une playlist** — un champ en haut de la playlist, qui fouille aussi les vidéos pas encore chargées
+- 🎬 **Outils YouTube Studio** — classement Vidéos / Shorts séparés, flèches de tendance à côté des vues, zoom dans la rétention, revenus masqués, heure exacte au survol, vidéo similaire de plusieurs Shorts d'un coup
 - 🌗 **Thème clair / sombre** — les boutons mesurent le fond de la page et s'y accordent, sans recharger
 - ⚙️ **Paramètres** — chaque outil s'active ou se coupe depuis le popup
 - 🔒 **Aperçu ponctuel** — rien ne s'affiche tant que tu n'as pas cliqué, et tout disparaît dès que tu navigues
 
 ## Prise en main
 
-1. [**Télécharge `youtube-tools.zip`**](https://github.com/StundZow/youtube-tools/releases/latest/download/youtube-tools.zip) et décompresse-le.
+1. [**Télécharge `youtube-tools.zip`**](https://github.com/ConejoCORP/youtube-tools/releases/latest/download/youtube-tools.zip) et décompresse-le.
 2. Ouvre `chrome://extensions` et active le **Mode développeur** en haut à droite.
 3. **Charger l'extension non empaquetée** → sélectionne le dossier `youtube-tools` obtenu.
 4. Épingle l'extension dans la barre d'outils.
@@ -120,16 +122,36 @@ Place de la vidéo parmi les 10 dernières de sa chaîne, **à âge égal** : le
 <img src="screenshots/03_classement.png" width="420" alt="Le panneau de classement sur 10">
 </div>
 
-C'est la **seule** fonction qui interroge YouTube — la liste des vidéos d'une chaîne n'est pas dans la page. Elle le fait **sans aucun cookie**, uniquement sur des données publiques, avec un cache de 6 h, et l'interrupteur du popup la coupe entièrement.
+C'est la **seule** fonction de la page de lecture qui interroge YouTube — la liste des vidéos d'une chaîne n'est pas dans la page. Elle le fait **sans aucun cookie**, uniquement sur des données publiques, avec un cache de 6 h, et l'interrupteur du popup la coupe entièrement.
+
+### Heure exacte de mise en ligne
+
+YouTube écrit la date d'une vidéo, jamais l'heure. Description ouverte, l'extension l'ajoute juste après : « 13 juin 2026 **à 13:00** », à l'heure de ton ordinateur. L'heure est déjà dans les données de la page : **aucune requête**.
+
+### Recherche dans une playlist
+
+Un champ en haut de chaque playlist filtre les vidéos par **titre** ou par **chaîne**, sans tenir compte des accents ni des majuscules (« noel » trouve « Noël »). YouTube ne charge une playlist que par lots de 100 : pendant une recherche, l'extension lui fait charger la suite, comme si tu défilais jusqu'en bas (une requête de YouTube par lot de 100 vidéos, aucune de l'extension). Échap vide le champ.
 
 ### Dans YouTube Studio
 
-Quatre ajouts, inspirés de **Better YouTube Studio** (SQUIDUU) — mais sans jamais lire ta session Google : tout part des chiffres affichés ou des données publiques de la chaîne.
+Six ajouts, inspirés de **Better YouTube Studio** (SQUIDUU). Cinq ne lisent jamais ta session Google : tout part des chiffres affichés, des données déjà chargées par Studio ou des données publiques de la chaîne. Le sixième, la vidéo similaire en lot, est le seul qui modifie ta chaîne, donc le seul qui passe par ta session (détails plus bas).
 
 - **Classement sur 10, Vidéos / Shorts séparés** — sur le tableau de bord, la carte *Performances de la dernière vidéo* gagne deux onglets. Chacun classe ton dernier contenu de ce format parmi les 10 derniers **du même format**, à âge égal : une vidéo n'est plus comparée à des Shorts. Même calcul que le classement de la page de lecture (données publiques, sans cookie), donc des estimations proches de celles de Studio, pas identiques.
 - **Flèches de tendance** — page *Contenu*, à côté des vues de chaque vidéo publique : ▲ vert si elle fait mieux que les trois quarts des 10 vidéos précédentes **au même âge**, ▼ rouge si elle fait moins bien, — gris dans la normale. Le survol donne la fourchette habituelle. Calculé uniquement avec les dates et les vues affichées dans la liste : **aucune requête**.
 - **Zoom dans le graphique de rétention** — le graphique reste à sa place, c'est la courbe qui zoome : **molette** vers le haut à l'endroit voulu, vers le bas pour dézoomer, **glisser** (ou Maj + molette) pour se déplacer, **double-clic** pour revenir. L'échelle des % s'adapte à la portion visible, les points de mesure apparaissent, le survol donne l'instant et le pourcentage, et la vue suit la lecture du lecteur de la carte.
 - **Masquer les revenus** — chaque montant de Studio est flouté ; un clic dessus l'affiche. Pour filmer ou partager ton écran. Un titre qui cite un prix n'est jamais flouté : seul un texte qui *est* un montant l'est.
+- **Heure exacte au survol** — page *Contenu*, survole une date : « Publiée le samedi 3 janvier 2026 à 10:54:29 » (ou l'heure d'import pour une vidéo pas encore publiée). Studio a déjà chargé cette heure avec la liste : **aucune requête**.
+- **Vidéo similaire de plusieurs Shorts** — *Contenu > Shorts* : coche des Shorts, puis **Modifier > Vidéo similaire**. Choisis la vidéo dans le sélecteur de Studio (ou **Retirer la vidéo similaire**), clique **Appliquer**, relis la confirmation qui liste les Shorts, et confirme. Chaque Short est mis à jour l'un après l'autre, avec un ✓ ou la raison d'un échec. Seuls les Shorts cochés **sur la page affichée** sont modifiés.
+
+#### La vidéo similaire en lot et ta session
+
+Changer la vidéo similaire d'un Short, c'est modifier ta chaîne : Studio exige ta session pour ça, comme quand tu le fais à la main. Pour cette fonction, et seulement sur l'onglet *Contenu > Shorts* :
+
+- l'extension garde **en mémoire, dans la page**, le « contexte » que Studio joint à ses propres requêtes (il contient un jeton de session) ;
+- **rien n'est envoyé avant que tu confirmes**. Ensuite, pour chaque Short, elle envoie à `studio.youtube.com` la même demande que Studio, signée comme Studio la signe (à partir du cookie de session, lu à ce moment-là) ;
+- rien n'est enregistré, rien ne part ailleurs que chez Studio, et la case **Vidéo similaire en lot** des paramètres coupe tout.
+
+C'est aussi la méthode de Better YouTube Studio.
 
 ## Paramètres
 
@@ -140,12 +162,16 @@ La **roue crantée** en haut du popup ouvre l'écran des paramètres : une **cas
 | YouTube | **Bouton transcription** | affiche ou retire le **☰** à côté du J'aime |
 | YouTube | **Bouton capture d'écran** | affiche ou retire le **📷** du lecteur |
 | YouTube | **Classement sur 10** | affiche le panneau de la page de lecture — et coupe ses requêtes |
+| YouTube | **Heure de mise en ligne** | ajoute ou retire l'heure après la date, sous la vidéo |
 | YouTube | **Export des vidéos** | affiche ou retire le **⤓** en haut de page |
+| YouTube | **Recherche dans les playlists** | affiche ou retire le champ de recherche des playlists |
 | YouTube | **Enregistrer un fichier** | télécharge un fichier **en plus** de la copie : `.csv` pour les exports, `.png` pour une capture |
 | Studio | **Masquer les revenus** | floute les montants (désactivé par défaut) |
 | Studio | **Onglets Vidéos / Shorts** | le classement séparé du tableau de bord — et coupe ses requêtes |
 | Studio | **Zoom sur la rétention** | active ou coupe le zoom à la molette |
 | Studio | **Flèches de tendance des vues** | affiche ou retire les flèches de la page *Contenu* |
+| Studio | **Heure exacte au survol** | affiche ou non l'heure au survol d'une date, page *Contenu* |
+| Studio | **Vidéo similaire en lot** | ajoute ou retire « Vidéo similaire » du menu *Modifier* des Shorts — et coupe tout accès à la session |
 
 Les changements s'appliquent **immédiatement**, sans recharger l'onglet.
 
@@ -155,12 +181,13 @@ Les changements s'appliquent **immédiatement**, sans recharger l'onglet.
 
 ## Vie privée
 
-Les images sont redimensionnées puis gardées dans `chrome.storage.local`, sur ta machine. L'extension n'a **aucun serveur** à elle. Deux fonctions sortent du navigateur, et seulement quand tu les utilises :
+Les images sont redimensionnées puis gardées dans `chrome.storage.local`, sur ta machine. L'extension n'a **aucun serveur** à elle. Trois fonctions sortent du navigateur, et seulement quand tu les utilises :
 
 - les **résumés** envoient la transcription ou les commentaires à **Gemini**, dans ta propre session Google ;
-- le **classement sur 10** lit la liste publique des vidéos de la chaîne, sans cookie — dans Studio aussi.
+- le **classement sur 10** lit la liste publique des vidéos de la chaîne, sans cookie — dans Studio aussi ;
+- la **vidéo similaire en lot** envoie, après ta confirmation, une demande par Short à Studio, avec ta session Studio (voir [plus haut](#la-vidéo-similaire-en-lot-et-ta-session)).
 
-Dans **YouTube Studio**, l'extension lit et modifie l'affichage des pages (c'est l'accès à `studio.youtube.com` que demande Chrome), mais ne lit **ni cookie ni session** : flèches, zoom et revenus masqués ne font aucune requête.
+Dans **YouTube Studio**, l'extension lit et modifie l'affichage des pages (c'est l'accès à `studio.youtube.com` que demande Chrome). En dehors de la vidéo similaire en lot, elle ne lit **ni cookie ni session** : flèches, zoom, heure au survol et revenus masqués ne font aucune requête.
 
 La **mise à jour automatique** lit `version.json` sur GitHub, sans cookie. Elle ne contacte jamais YouTube.
 
@@ -222,10 +249,15 @@ youtube-tools/
 ├── rank-core.js     calcul du classement (sans DOM, testable sous Node)
 ├── rank-bridge.js   lecture des données de la vidéo (monde de la page)
 ├── rank.js/css      panneau de la colonne de droite
+├── heure-video.js   heure exacte de mise en ligne, sous la vidéo
+├── playlist-recherche.js/css  champ de recherche des playlists
 ├── studio-top10.js     Studio : classement sur 10, onglets Vidéos / Shorts
 ├── studio-tendance.js  Studio : flèches de tendance de la page Contenu
 ├── studio-retention.js Studio : zoom dans le graphique de rétention
 ├── studio-revenus.js   Studio : revenus floutés
+├── studio-heure.js     Studio : heure exacte au survol d'une date
+├── studio-similaire.js Studio : vidéo similaire de plusieurs Shorts (interface)
+├── studio-page.js      Studio, monde de la page : heures, sélecteur, envoi à Studio
 ├── studio.css       styles des ajouts à Studio
 ├── tests/           test du cœur de calcul, contre de vraies chaînes
 └── icons/           16 / 32 / 48 / 128 px
@@ -235,4 +267,4 @@ youtube-tools/
 
 ## Crédits
 
-Concept et design d'origine : **PrevYou** par BenjaminCode, design par BastiUi. Le classement sur 10 reprend le modèle de **Better YouTube Studio** par SQUIDUU, dont viennent aussi les idées des outils Studio. Le pilotage de Gemini vient de **Google More**. Cette version est un recodage complet en Manifest V3.
+Concept et design d'origine : **PrevYou** par BenjaminCode, design par BastiUi. Le classement sur 10 reprend le modèle de **Better YouTube Studio** par SQUIDUU, dont viennent aussi les idées des outils Studio, de l'heure exacte et de la recherche dans les playlists. Le pilotage de Gemini vient de **Google More**. Cette version est un recodage complet en Manifest V3.
