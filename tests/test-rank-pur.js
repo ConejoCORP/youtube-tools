@@ -83,5 +83,54 @@ console.log('\n6. Shorts : pas d\'age dans la liste, on compare les vues brutes'
   verifie('vues brutes conservees', a.views, 5000);
 }
 
-console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe — aucune requete emise'));
-process.exit(echecs ? 1 : 0);
+console.log('\n7. Multiplicateur : vues / mediane des precedentes, au meme age');
+{
+  const now = Date.now();
+  const cur = { id: 'cur', views: 3000, published: now - 48 * 3600e3 };
+  const memeAge = (id, views) => ({ id, views, ageHours: 48, fetchedAt: now });
+  const found = { target: { id: 'cur' }, older: [memeAge('a', 1000), memeAge('b', 2000), memeAge('c', 100000)] };
+  const m = C.multiplier(cur, found, 'video', now);
+  verifie('statut', m.status, 'ok');
+  proche('3000 / mediane 2000 (le gros succes ne fausse rien)', m.value, 1.5, 1e-9);
+  verifie('nombre de videos comparees', m.compared, 3);
+
+  const anciennes = { target: {}, older: [
+    { id: 'a', views: 5000, ageHours: 240, fetchedAt: now },
+    { id: 'b', views: 5000, ageHours: 240, fetchedAt: now }
+  ] };
+  proche('les anciennes ramenees a 2 jours', C.multiplier(cur, anciennes, 'video', now).value,
+    3000 / (5000 * C.growth(48) / C.growth(240)), 1e-6);
+
+  verifie('video de 3 h : calcule quand meme (pas de seuil de 24 h)',
+    C.multiplier({ id: 'cur', views: 100, published: now - 3 * 3600e3 }, found, 'video', now).status, 'ok');
+
+  const shorts = { target: {}, older: [
+    { id: 'a', views: 300, ageHours: null, fetchedAt: now },
+    { id: 'b', views: 600, ageHours: null, fetchedAt: now }
+  ] };
+  proche('Short : vues brutes, 900 / 450', C.multiplier({ id: 'cur', views: 900 }, shorts, 'short', now).value, 2, 1e-9);
+  verifie('aucune vue de reference', C.multiplier(cur, { target: {}, older: [memeAge('a', 0)] }, 'video', now).status, 'not-enough');
+}
+
+console.log('\n8. Multiplicateur depuis la liste en cache : aucune requete');
+(async () => {
+  const now = Date.now();
+  const chaine = 'UC' + 'y'.repeat(22);
+  const items = ['cur', 'a', 'b', 'c'].map((id, i) => ({ id, title: id, views: [4000, 1000, 2000, 3000][i], ageHours: 48 + i, fetchedAt: now }));
+  const memoire = { [`yttoolsRank:${chaine}:video`]: JSON.stringify({ channel: chaine, kind: 'video', at: now, items, token: null, pages: 1, done: true }) };
+  let requetes = 0;
+  const deps = {
+    fetch: async () => { requetes++; throw new Error('aucune requete attendue'); },
+    cfg: { key: 'cle', version: '2.0' },
+    now: () => now,
+    storage: { getItem: (k) => memoire[k] || null, setItem: (k, v) => { memoire[k] = v; } }
+  };
+  const r = await C.computeMultiplier({ id: 'cur', channel: chaine, views: 4000, published: now - 48 * 3600e3 }, deps);
+  verifie('statut', r.status, 'ok');
+  verifie('requetes emises', requetes, 0);
+  verifie('direct en cours : rien', (await C.computeMultiplier({ live: true }, deps)).status, 'live');
+  verifie('sans cle : rien', (await C.computeMultiplier({ id: 'cur', channel: chaine }, { ...deps, cfg: {} })).status, 'no-config');
+
+  console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe — aucune requete emise'));
+  process.exit(echecs ? 1 : 0);
+})();

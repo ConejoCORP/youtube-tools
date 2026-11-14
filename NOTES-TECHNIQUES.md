@@ -54,6 +54,26 @@ Points mis au jour en faisant tourner l'extracteur sur de vraies pages :
 
 Les microdonnées donnent aussi les **comptes exacts** de vues et de likes. Le piège était l'ordre de priorité : le texte affiché passait devant, donc « 3,5 M de vues » donnait 3 500 000 arrondi alors que le compte exact était disponible juste à côté.
 
+### Le multiplicateur
+
+D'abord celui de **vidIQ**. Son panneau est `#video-companion-root`, et la valeur est sous l'étiquette « Outlier », dans `#long-scorecard-overlay`. Les classes de vidIQ sont hachées : on reconnaît la valeur à ce qu'elle dit (`1.6x`), comme pour les cartes de l'export. Après une navigation interne, ce panneau peut encore parler de la vidéo précédente. Sa miniature (`i.ytimg.com/vi/<id>/`) dit laquelle : si ce n'est pas la vidéo courante, on ne lit rien. vidIQ met plus de dix secondes à remplir son panneau. Un clic trop tôt tombe donc sur notre calcul.
+
+Sinon, `computeMultiplier` (rank-core.js) divise les vues de la vidéo par la **médiane** des 9 précédentes, ramenées au même âge par la courbe du classement. On prend la médiane plutôt que la moyenne : un seul gros succès de la chaîne ne fait pas passer les autres vidéos pour des échecs.
+
+- Pas de seuil de 24 h comme pour le classement : vidIQ affiche une valeur dès la première heure.
+- Le calcul passe par le même cache et le même verrou que le classement, sans relire les titres traduits. Quand le panneau du classement est déjà chargé, il ne fait donc aucune requête.
+- Si le réglage « Classement sur 10 » est coupé, il n'est pas lancé : ce réglage reste le seul qui autorise des requêtes vers YouTube.
+
+Mesuré sur trois vidéos d'une même chaîne :
+
+| vidIQ | notre calcul |
+|---|---|
+| 1.2x | 0.9x |
+| 1.6x | 1.2x |
+| 1.8x | 2.2x |
+
+Les deux sont du même ordre, sans être identiques. vidIQ compare à une courbe « typique » qu'il tire de son propre historique de vues, que nous n'avons pas.
+
 ### Aucune requête
 
 Un repli interrogeait `/youtubei/v1/get_transcript`. Il a été retiré : mieux vaut perdre un filet de sécurité que de ressembler à du trafic automatisé. L'extension clique sur « Afficher la transcription » comme un humain, laisse YouTube faire sa propre requête, et lit le résultat.

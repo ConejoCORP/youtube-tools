@@ -68,11 +68,17 @@ Volontairement **éphémère** : la carte n'apparaît qu'au clic, uniquement sur
 Copie toute la transcription dans le presse-papiers, métadonnées de la vidéo comprises :
 
 ```csv
-titre,chaine,debut,fin,debut_s,texte,date,date_iso,vues,vues_num,likes,duree,duree_s,url,id
-"Ma vidéo","Ma Chaîne","0:00","0:05","0","Première phrase","il y a 3 semaines","2026-08-16","1 659 225 vues","1659225","21816","1:00:44","3644","https://…","lZGoJT4abos"
+titre,chaine,debut,fin,debut_s,texte,date,date_iso,vues,vues_num,likes,multiplicateur,multiplicateur_source,duree,duree_s,url,id
+"Ma vidéo","Ma Chaîne","0:00","0:05","0","Première phrase","il y a 3 semaines","2026-08-16","1 659 225 vues","1659225","21816","1.6x","vidIQ","1:00:44","3644","https://…","lZGoJT4abos"
 ```
 
 `date_iso` est **toujours** une date absolue : une date relative pourrit, « il y a 9 mois » désignera autre chose dans trois mois. `vues_num` et `likes` reprennent les comptes exacts quand la page les donne. `duree_s` permet de trier et de calculer des densités.
+
+`multiplicateur` dit combien de fois mieux (ou moins bien) que d'habitude la vidéo marche pour sa chaîne. `multiplicateur_source` dit d'où il vient :
+
+- `vidIQ` : celui que **vidIQ** affiche sous « Outlier », si l'extension est installée et que son panneau est chargé ;
+- `calculé` : sinon, l'extension le calcule elle-même. Ce sont les vues de la vidéo divisées par la **médiane** de ses 9 précédentes, ramenées **au même âge**. Le calcul utilise la même liste que le classement sur 10, donc aucune requête de plus quand le panneau du classement l'a déjà chargée. Les valeurs sont proches de celles de vidIQ, sans être identiques : 0.9x contre 1.2x, 1.2x contre 1.6x, 2.2x contre 1.8x sur trois vidéos testées ;
+- vide : ni l'un ni l'autre, par exemple un direct en cours, ou le réglage **Classement sur 10** coupé, puisque c'est lui qui autorise les requêtes vers YouTube.
 
 ### Résumé par Gemini (bouton ✨ Résumer, à côté du ☰)
 
@@ -162,7 +168,7 @@ La **roue crantée** en haut du popup ouvre l'écran des paramètres : une **cas
 |---|---|---|
 | YouTube | **Bouton transcription** | affiche ou retire le **☰** à côté du J'aime |
 | YouTube | **Bouton capture d'écran** | affiche ou retire le **📷** du lecteur |
-| YouTube | **Classement sur 10** | affiche le panneau de la page de lecture — et coupe ses requêtes |
+| YouTube | **Classement sur 10** | affiche le panneau de la page de lecture — et coupe ses requêtes, ainsi que le multiplicateur calculé de la transcription |
 | YouTube | **Heure de mise en ligne** | ajoute ou retire l'heure après la date, sous la vidéo |
 | YouTube | **Export des vidéos** | affiche ou retire le **⤓** en haut de page |
 | YouTube | **Recherche dans les playlists** | affiche ou retire le champ de recherche des playlists |

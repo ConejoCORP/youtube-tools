@@ -605,11 +605,98 @@
     };
   }
 
-  const COLUMNS = ['titre', 'chaine', 'debut', 'fin', 'debut_s', 'texte',
-                   'date', 'date_iso', 'vues', 'vues_num', 'likes', 'duree', 'duree_s', 'url', 'id'];
+  /* --------------------------------------------------------- multiplicateur */
 
-  function toCsv(rows) {
-    const meta = videoMeta();
+  const SRC_ATTR = 'data-yttools-rank-src';
+
+  /**
+   * Le multiplicateur que vidIQ affiche dans son panneau (#video-companion-root),
+   * sous « Outlier ». Ses classes sont hachees et changent a chaque version : on
+   * le reconnait a ce qu'il dit (« 1.6x »), comme videos.js sur les cartes.
+   *
+   * Juste apres une navigation, le panneau peut encore parler de la video
+   * precedente. Sa miniature (i.ytimg.com/vi/<id>/) dit laquelle : si elle n'est
+   * pas celle de la video courante, on ne lit rien.
+   */
+  function multiplicateurVidiq(id) {
+    const panneau = document.getElementById('video-companion-root');
+    if (!panneau) return '';
+
+    const vignettes = [...panneau.querySelectorAll('img[src*="/vi/"]')]
+      .map((i) => (i.getAttribute('src').match(/\/vi\/([\w-]{11})\//) || [])[1])
+      .filter(Boolean);
+    if (vignettes.length && !vignettes.includes(id)) return '';
+
+    const valeurs = [];
+    const walker = document.createTreeWalker(panneau, NodeFilter.SHOW_ELEMENT);
+    for (let el = walker.nextNode(); el; el = walker.nextNode()) {
+      if (el.children.length || !TV.RE.multiplier.test(clean(el.textContent))) continue;
+      // L'etiquette « Outlier » est un cousin proche : elle departage s'il y en a plusieurs.
+      let n = el;
+      let etiquete = false;
+      for (let i = 0; i < 3 && n && n !== panneau; i++) {
+        n = n.parentElement;
+        if (n && /outlier|multipl/i.test(n.textContent)) { etiquete = true; break; }
+      }
+      valeurs.push({ texte: clean(el.textContent).replace(/\s+/g, ''), etiquete });
+    }
+    const choisi = valeurs.find((v) => v.etiquete) || valeurs[0];
+    return choisi ? choisi.texte : '';
+  }
+
+  /** « 1.6x », comme vidIQ ; deux decimales sous 0.1x pour ne pas afficher 0.0x. */
+  function formatMultiplicateur(v) {
+    return (v > 0 && v < 0.1 ? v.toFixed(2) : v.toFixed(1)) + 'x';
+  }
+
+  /**
+   * Notre propre multiplicateur (rank-core.js) : vues de la video / mediane des
+   * 9 precedentes de la chaine, ramenees au meme age.
+   *
+   * Il reprend la liste du classement sur 10 et son cache : quand le panneau du
+   * classement l'a deja chargee, aucune requete. Le reglage « Classement sur
+   * 10 » reste le seul interrupteur des requetes vers YouTube : coupe, on ne
+   * calcule rien.
+   */
+  async function multiplicateurCalcule(id) {
+    const RK = window.__yttoolsRank;
+    if (!RK || !RK.computeMultiplier || !TV.settings.get().rankBadge) return '';
+
+    let src = null;
+    try { src = JSON.parse(document.documentElement.getAttribute(SRC_ATTR) || 'null'); } catch { src = null; }
+    if (!src || src.id !== id) return '';          // pont pas encore a jour apres une navigation
+
+    const t = Date.parse(src.published || '');
+    const r = await RK.computeMultiplier({ ...src, published: Number.isFinite(t) ? t : null }, {
+      // Enveloppe obligatoire : appele comme methode de deps, fetch leverait
+      // « Illegal invocation » (son `this` doit etre la fenetre).
+      fetch: (url, opts) => fetch(url, opts),
+      base: '',
+      cfg: { key: src.key, version: src.version },
+      now: Date.now,
+      storage: window.sessionStorage
+    });
+    return r && r.status === 'ok' ? formatMultiplicateur(r.value) : '';
+  }
+
+  /** Celui de vidIQ s'il est affiche, sinon le notre, sinon rien. */
+  async function multiplicateur(id) {
+    const vidiq = multiplicateurVidiq(id);
+    if (vidiq) return { multiplicateur: vidiq, multiplicateur_source: 'vidIQ' };
+    try {
+      // Plafonne : une liste lente ne doit pas retenir la copie de la transcription.
+      const calcule = await Promise.race([multiplicateurCalcule(id), sleep(8000).then(() => '')]);
+      if (calcule) return { multiplicateur: calcule, multiplicateur_source: 'calculé' };
+    } catch { /* liste illisible : colonne vide plutot que pas de copie */ }
+    return { multiplicateur: '', multiplicateur_source: '' };
+  }
+
+  const COLUMNS = ['titre', 'chaine', 'debut', 'fin', 'debut_s', 'texte',
+                   'date', 'date_iso', 'vues', 'vues_num', 'likes',
+                   'multiplicateur', 'multiplicateur_source',
+                   'duree', 'duree_s', 'url', 'id'];
+
+  function toCsv(rows, meta) {
     const withHours = rows[rows.length - 1].start >= 3600;
     const lines = [COLUMNS.join(',')];
 
@@ -690,13 +777,11 @@
     // Garde la transcription sous la main pour le bouton « Resumer »
     // (summary.js), qui apparait a cote une fois la copie faite. Elle est
     // rattachee a la video : changer de video la rend caduque.
-    TV.lastTranscript = {
-      id: new URLSearchParams(location.search).get('v') || '',
-      meta: videoMeta(),
-      rows
-    };
+    const id = new URLSearchParams(location.search).get('v') || '';
+    const meta = { ...videoMeta(), ...(await multiplicateur(id)) };
+    TV.lastTranscript = { id, meta, rows };
 
-    const { ok, file } = await TV.deliver(toCsv(rows), fileName());
+    const { ok, file } = await TV.deliver(toCsv(rows, meta), fileName());
     if (!ok) { setState(btn, 'ko', 'Copie refusée'); return; }
     setState(btn, 'ok', rows.length + (file ? ' lignes ⤓' : ' lignes'));
   }

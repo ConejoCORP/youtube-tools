@@ -247,32 +247,83 @@
 
   /* ------------------------------------------------------------- classement */
 
+  const ageOf = (current, now) =>
+    current.published ? Math.max(0, (now - current.published) / 3600e3) : null;
+
+  // Le compteur exact de la page plutot que l'arrondi de la liste (« 1.2M »).
+  const viewsOf = (current, found) =>
+    current.views != null ? current.views : (found.target.views || 0);
+
+  /** Les vues qu'avait une video plus ancienne quand elle avait l'age curAge. */
+  function atSameAge(o, curAge, kind, now) {
+    const oAge = o.ageHours == null ? null : o.ageHours + (now - o.fetchedAt) / 3600e3;
+    // Shorts : la liste ne donne pas d'age, on compare donc les vues actuelles.
+    const scale = kind === 'video' && curAge != null && oAge != null;
+    return { views: scale ? o.views * growth(curAge) / growth(oAge) : o.views, estimated: scale };
+  }
+
   function rank(current, found, kind, now) {
-    const curAge = current.published ? Math.max(0, (now - current.published) / 3600e3) : null;
+    const curAge = ageOf(current, now);
     if (curAge != null && curAge < MIN_AGE_H) return { status: 'too-early', ageHours: curAge };
 
     const entries = [{
       id: current.id,
       title: current.title || found.target.title || '',
-      // Le compteur exact de la page plutot que l'arrondi de la liste (« 1.2M »)
-      views: current.views != null ? current.views : (found.target.views || 0),
+      views: viewsOf(current, found),
       current: true,
       estimated: false
     }];
     for (const o of found.older) {
-      const oAge = o.ageHours == null ? null : o.ageHours + (now - o.fetchedAt) / 3600e3;
-      // Shorts : la liste ne donne pas d'age, on compare donc les vues actuelles.
-      const scale = kind === 'video' && curAge != null && oAge != null;
-      entries.push({
-        id: o.id,
-        title: o.title,
-        views: scale ? o.views * growth(curAge) / growth(oAge) : o.views,
-        current: false,
-        estimated: scale
-      });
+      const { views, estimated } = atSameAge(o, curAge, kind, now);
+      entries.push({ id: o.id, title: o.title, views, current: false, estimated });
     }
     entries.sort((a, b) => b.views - a.views);
     return { status: 'ok', entries, position: entries.findIndex((e) => e.current) + 1, total: entries.length, ageHours: curAge, kind };
+  }
+
+  function median(values) {
+    const s = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    if (!s.length) return null;
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+
+  /**
+   * Multiplicateur, a la maniere de celui de vidIQ (« 1.6x ») : les vues de la
+   * video divisees par la MEDIANE de ses 9 predecesseures, ramenees au meme age.
+   * La mediane plutot que la moyenne : un seul gros succes de la chaine ne fait
+   * pas passer toutes ses autres videos pour des echecs.
+   *
+   * Pas de seuil de 24 h, contrairement au classement : sur une video de
+   * quelques heures la valeur est approximative, mais vidIQ en affiche une des
+   * la premiere heure, et une valeur approchee vaut mieux qu'une case vide.
+   */
+  function multiplier(current, found, kind, now) {
+    const curAge = ageOf(current, now);
+    const ref = median(found.older.map((o) => atSameAge(o, curAge, kind, now).views));
+    if (!(ref > 0)) return { status: 'not-enough' };
+    return { status: 'ok', value: viewsOf(current, found) / ref, compared: found.older.length };
+  }
+
+  /** Ce qui empeche tout calcul, avant meme de charger la liste. */
+  function precheck(current, deps) {
+    if (current.live) return { status: 'live' };
+    if (!/^UC[\w-]{22}$/.test(current.channel || '')) return { status: 'no-channel' };
+    if (!deps.cfg || !deps.cfg.key) return { status: 'no-config' };
+    return null;
+  }
+
+  /** La video et ses predecesseures, depuis le cache ou la liste publique. A appeler sous verrou. */
+  async function loadFound(current, kind, deps) {
+    let st = getState(current.channel, kind, deps);
+    let found = await findWithHistory(st, current.id, deps);
+    // Video recente absente d'une liste en cache : on recharge la liste une fois.
+    if (!found && deps.now() - st.at > STALE_MS) {
+      st = resetState(current.channel, kind, deps);
+      found = await findWithHistory(st, current.id, deps);
+    }
+    saveState(st, deps);
+    return { st, found };
   }
 
   /**
@@ -282,26 +333,38 @@
    * Statuts : ok | too-early | live | not-found | not-enough | no-channel | no-config
    */
   async function computeRanking(current, deps) {
-    if (current.live) return { status: 'live' };
-    if (!/^UC[\w-]{22}$/.test(current.channel || '')) return { status: 'no-channel' };
-    if (!deps.cfg || !deps.cfg.key) return { status: 'no-config' };
+    const bloque = precheck(current, deps);
+    if (bloque) return bloque;
     const kind = current.short ? 'short' : 'video';
 
     return withLock(keyOf(current.channel, kind), async () => {
-      let st = getState(current.channel, kind, deps);
-      let found = await findWithHistory(st, current.id, deps);
-      // Video recente absente d'une liste en cache : on recharge la liste une fois.
-      if (!found && deps.now() - st.at > STALE_MS) {
-        st = resetState(current.channel, kind, deps);
-        found = await findWithHistory(st, current.id, deps);
-      }
-      saveState(st, deps);
+      const { st, found } = await loadFound(current, kind, deps);
       if (!found) return { status: 'not-found' };
       if (found.older.length < MIN_OLDER) return { status: 'not-enough' };
 
       const result = rank(current, found, kind, deps.now());
       await translate(result, current.channel, kind, st, deps, (e) => !e.current);
       return result;
+    });
+  }
+
+  /**
+   * Le multiplicateur de la video (voir multiplier). Meme liste et meme cache
+   * que le classement : si le panneau du classement l'a deja chargee, aucune
+   * requete. Et aucune relecture des titres traduits, inutiles ici.
+   *
+   * Statuts : ok (+ value, compared) | live | not-found | not-enough | no-channel | no-config
+   */
+  async function computeMultiplier(current, deps) {
+    const bloque = precheck(current, deps);
+    if (bloque) return bloque;
+    const kind = current.short ? 'short' : 'video';
+
+    return withLock(keyOf(current.channel, kind), async () => {
+      const { found } = await loadFound(current, kind, deps);
+      if (!found) return { status: 'not-found' };
+      if (found.older.length < MIN_OLDER) return { status: 'not-enough' };
+      return multiplier(current, found, kind, deps.now());
     });
   }
 
@@ -351,7 +414,7 @@
     });
   }
 
-  const api = { computeRanking, computeLatest, rank, growth, parseViews, parseAgeHours, parseItems, TAB_PARAMS, COMPARED };
+  const api = { computeRanking, computeLatest, computeMultiplier, rank, multiplier, median, growth, parseViews, parseAgeHours, parseItems, TAB_PARAMS, COMPARED };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.__yttoolsRank = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
