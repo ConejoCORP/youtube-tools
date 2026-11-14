@@ -17,9 +17,57 @@ const SETTINGS_DEFAULTS = {
   captureButton: true,
   hideRevenue: false,
   viewsTrend: true,
-  retentionZoom: true
+  retentionZoom: true,
+  studioTop10: true
 };
 let settings = { ...SETTINGS_DEFAULTS };
+
+/*
+ * Ecran Parametres : une case cliquable par reglage, rangees par site et par
+ * section (presentation reprise de Better YouTube Studio). Le survol ou le
+ * focus d'une case affiche son explication sous la grille.
+ *
+ * Icones Material Design (licence Apache 2.0).
+ */
+const REGLAGES = {
+  youtube: [
+    { section: 'Page de la vidéo' },
+    { cle: 'transcriptButton', nom: 'Bouton transcription',
+      icone: 'M14 17H4v2h10v-2zm6-8H4v2h16V9zM4 15h16v-2H4v2zM4 5v2h16V5H4z',
+      aide: "Le bouton ☰ à côté du J'aime : copie la transcription en CSV, puis propose le résumé par Gemini." },
+    { cle: 'captureButton', nom: "Bouton capture d'écran",
+      icone: 'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z',
+      aide: "Un appareil photo dans le lecteur : copie l'image affichée, à la résolution de la vidéo." },
+    { cle: 'rankBadge', nom: 'Classement sur 10',
+      icone: 'M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 11h-5.5v10H22V11z',
+      aide: 'Place de la vidéo parmi les 10 dernières de sa chaîne, à âge égal. Lit la liste publique de la chaîne, sans cookie, gardée 6 h.' },
+    { section: 'Partout sur YouTube' },
+    { cle: 'videosButton', nom: 'Export des vidéos',
+      icone: 'M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z',
+      aide: 'Le bouton ⤓ en haut de page : copie en CSV toutes les vidéos chargées.' },
+    { cle: 'saveAsFile', nom: 'Enregistrer un fichier',
+      icone: 'M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z',
+      aide: 'La copie a toujours lieu. Activé, un fichier est téléchargé en plus : .csv pour les exports, .png pour une capture.' }
+  ],
+  studio: [
+    { section: 'Général' },
+    { cle: 'hideRevenue', nom: 'Masquer les revenus',
+      icone: 'M12 7a5 5 0 0 1 4.64 6.83l2.92 2.92A11.8 11.8 0 0 0 23 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.74 2.74A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55A3 3 0 0 0 12.65 15l1.55 1.55A5 5 0 0 1 7.53 9.8zm4.31-.78 3.15 3.15.02-.16a3 3 0 0 0-3-3l-.17.01z',
+      aide: "Floute chaque montant dans Studio ; un clic dessus l'affiche. Pour filmer ou partager ton écran." },
+    { section: 'Pages de Studio' },
+    { cle: 'studioTop10', nom: 'Onglets Vidéos / Shorts',
+      icone: 'M21 3H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H3V5h10v4h8v10z',
+      aide: 'Tableau de bord : classement sur 10 séparé entre vidéos et Shorts, sur la carte de la dernière vidéo. Liste publique de la chaîne, sans cookie.' },
+    { cle: 'retentionZoom', nom: 'Zoom sur la rétention',
+      icone: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm.5-7H9v2H7v1h2v2h1v-2h2V9h-2z',
+      aide: 'Statistiques : molette sur le graphique de rétention pour zoomer, glisser pour se déplacer, double-clic pour revenir.' },
+    { cle: 'viewsTrend', nom: 'Flèches de tendance des vues',
+      icone: 'M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z',
+      aide: "Page Contenu : chaque vidéo comparée aux 10 précédentes au même âge, d'après les chiffres affichés. Aucune requête." }
+  ]
+};
+const AIDE_PAR_DEFAUT = "Clique sur une case pour l'activer ou la couper. Survole-la pour voir ce qu'elle fait.";
+let site = 'youtube';
 const DEFAULTS = {
   channel: '',
   title: '',
@@ -39,9 +87,9 @@ const el = {
   title: $('videoTitle'), titleCount: $('titleCount'),
   random: $('randomPos'),
   preview: $('preview'), remove: $('remove'), status: $('status'),
-  setTranscript: $('setTranscript'), setVideos: $('setVideos'), setSaveFile: $('setSaveFile'),
-  setRank: $('setRank'), setCapture: $('setCapture'),
-  setMoney: $('setMoney'), setTrend: $('setTrend'), setZoom: $('setZoom')
+  ouvrirReglages: $('ouvrirReglages'), retour: $('retour'),
+  vueAccueil: $('vueAccueil'), vueReglages: $('vueReglages'),
+  liste: $('reglagesListe'), aide: $('reglagesAide')
 };
 
 let state = { ...DEFAULTS };
@@ -119,14 +167,10 @@ function render() {
 
   el.random.setAttribute('aria-checked', String(!!state.random));
 
-  el.setTranscript.setAttribute('aria-checked', String(!!settings.transcriptButton));
-  el.setVideos.setAttribute('aria-checked', String(!!settings.videosButton));
-  el.setSaveFile.setAttribute('aria-checked', String(!!settings.saveAsFile));
-  el.setRank.setAttribute('aria-checked', String(!!settings.rankBadge));
-  el.setCapture.setAttribute('aria-checked', String(!!settings.captureButton));
-  el.setMoney.setAttribute('aria-checked', String(!!settings.hideRevenue));
-  el.setTrend.setAttribute('aria-checked', String(!!settings.viewsTrend));
-  el.setZoom.setAttribute('aria-checked', String(!!settings.retentionZoom));
+  el.liste.querySelectorAll('.tuile').forEach((t) => {
+    const oui = String(!!settings[t.dataset.cle]);
+    if (t.getAttribute('aria-checked') !== oui) t.setAttribute('aria-checked', oui);
+  });
 
   setImg(el.thumbImg, state.thumb);
   el.drop.classList.toggle('filled', !!state.thumb);
@@ -354,14 +398,84 @@ document.addEventListener('paste', (e) => {
 el.preview.addEventListener('click', () => apply());
 el.remove.addEventListener('click', removePreview);
 
-el.setTranscript.addEventListener('click', () => saveSettings({ transcriptButton: !settings.transcriptButton }));
-el.setVideos.addEventListener('click', () => saveSettings({ videosButton: !settings.videosButton }));
-el.setSaveFile.addEventListener('click', () => saveSettings({ saveAsFile: !settings.saveAsFile }));
-el.setRank.addEventListener('click', () => saveSettings({ rankBadge: !settings.rankBadge }));
-el.setCapture.addEventListener('click', () => saveSettings({ captureButton: !settings.captureButton }));
-el.setMoney.addEventListener('click', () => saveSettings({ hideRevenue: !settings.hideRevenue }));
-el.setTrend.addEventListener('click', () => saveSettings({ viewsTrend: !settings.viewsTrend }));
-el.setZoom.addEventListener('click', () => saveSettings({ retentionZoom: !settings.retentionZoom }));
+/* -------------------------------------------------------------- parametres */
+
+function icone(d) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const p = document.createElementNS(NS, 'path');
+  p.setAttribute('d', d);
+  svg.append(p);
+  return svg;
+}
+
+const aide = (texte) => { el.aide.textContent = texte || AIDE_PAR_DEFAUT; };
+
+/** Construit la grille du site choisi : un titre par section, une case par reglage. */
+function construireReglages() {
+  document.querySelectorAll('.site').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.site === site)));
+  el.liste.textContent = '';
+  let grille = null;
+  for (const r of REGLAGES[site]) {
+    if (r.section) {
+      const titre = document.createElement('h3');
+      titre.className = 'reglages-section';
+      titre.textContent = r.section;
+      grille = document.createElement('div');
+      grille.className = 'reglages-grille';
+      el.liste.append(titre, grille);
+      continue;
+    }
+    const t = document.createElement('button');
+    t.type = 'button';
+    t.className = 'tuile';
+    t.dataset.cle = r.cle;
+    t.setAttribute('role', 'switch');
+    t.setAttribute('aria-checked', String(!!settings[r.cle]));
+    t.setAttribute('aria-description', r.aide);
+    const nom = document.createElement('span');
+    nom.className = 'tuile-nom';
+    nom.textContent = r.nom;
+    t.append(icone(r.icone), nom);
+    t.addEventListener('click', () => saveSettings({ [r.cle]: !settings[r.cle] }));
+    t.addEventListener('mouseenter', () => aide(r.aide));
+    t.addEventListener('focus', () => aide(r.aide));
+    t.addEventListener('mouseleave', () => aide());
+    t.addEventListener('blur', () => aide());
+    grille.append(t);
+  }
+  aide();
+}
+
+/** `clavier` : ouvert ou ferme au clavier, on deplace le focus pour ne pas le perdre. */
+function afficherReglages(oui, clavier) {
+  el.vueReglages.hidden = !oui;
+  el.vueAccueil.hidden = oui;
+  el.reset.hidden = oui;
+  el.ouvrirReglages.setAttribute('aria-expanded', String(oui));
+  if (oui) construireReglages();
+  if (clavier) (oui ? el.retour : el.ouvrirReglages).focus();
+}
+
+// Un clic au clavier (Entree, Espace) a un `detail` nul ; un clic de souris, non.
+el.ouvrirReglages.addEventListener('click', (e) => afficherReglages(el.vueReglages.hidden, e.detail === 0));
+el.retour.addEventListener('click', (e) => afficherReglages(false, e.detail === 0));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !el.vueReglages.hidden) { e.preventDefault(); afficherReglages(false, true); }
+});
+document.querySelectorAll('.site').forEach((b) => b.addEventListener('click', () => {
+  site = b.dataset.site;
+  construireReglages();
+}));
+
+$('version').textContent = `Version ${chrome.runtime.getManifest().version}.`;
+
+// Ouvert depuis YouTube Studio : l'onglet Studio est affiche d'emblee.
+chrome.tabs.query({ active: true, currentWindow: true })
+  .then(([t]) => { if (t && /^https:\/\/studio\.youtube\.com\//.test(t.url || '')) site = 'studio'; })
+  .catch(() => {});
 
 load();
 

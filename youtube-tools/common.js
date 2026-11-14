@@ -25,7 +25,8 @@
     captureButton: true,      // bouton capture d'ecran dans le lecteur
     hideRevenue: false,       // Studio : flouter les montants
     viewsTrend: true,         // Studio : fleches de tendance a cote des vues (page Contenu)
-    retentionZoom: true       // Studio : zoom a la molette dans le graphique de retention
+    retentionZoom: true,      // Studio : zoom a la molette dans le graphique de retention
+    studioTop10: true         // Studio : classement sur 10, onglets Videos / Shorts (interroge YouTube)
   };
 
   let current = { ...DEFAULTS };

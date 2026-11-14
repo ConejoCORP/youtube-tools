@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Tools",
-  "version": "3.11.0",
+  "version": "3.12.0",
   "description": "Boîte à outils YouTube : aperçu de miniature dans le vrai feed, transcription, résumés de la vidéo et des commentaires par Gemini, export CSV des vidéos, classement sur 10 et outils pour YouTube Studio.",
   "icons": {
     "16": "icons/icon16.png",

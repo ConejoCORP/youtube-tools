@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "description": "Tests de YouTube Tools (hors extension, jamais publies dans l'archive)",
+  "scripts": {
+    "test": "node run.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  }
+}

@@ -15,7 +15,7 @@
  * estimations, proches de celles de Studio sans leur etre identiques.
  *
  * Requetes : 1 ou 2 par onglet ouvert, gardees en cache. Seul l'onglet affiche
- * est calcule. Le reglage « Classement sur 10 » du popup coupe tout.
+ * est calcule. La case « Onglets Videos / Shorts » des parametres coupe tout.
  */
 
 (() => {
@@ -218,7 +218,7 @@
 
   TV.keepMounted({
     id: ID,
-    wanted: () => !!chaine() && TV.settings.get().rankBadge !== false && !!carte(),
+    wanted: () => !!chaine() && TV.settings.get().studioTop10 !== false && !!carte(),
     place: placer,
     refresh: rafraichir
   });

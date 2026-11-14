@@ -42,10 +42,12 @@ body {
 /* ---------- header ---------- */
 .head {
   display: grid;
-  grid-template-columns: 32px 1fr 32px;
+  grid-template-columns: 72px 1fr 72px;
   align-items: center;
   margin-bottom: 22px;
 }
+.head-right { display: flex; justify-content: flex-end; gap: 4px; }
+.icon-btn[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
 
 .title {
   margin: 0;
@@ -244,14 +246,86 @@ input[type="text"]:focus { border-bottom-color: var(--accent); }
 }
 .foot b { color: var(--text); font-weight: 600; }
 
-/* ---------- paramètres ---------- */
-.settings {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+/* ---------- écran Paramètres : des cases cliquables ---------- */
+.reglages-tete {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin: -6px 0 16px;
 }
-.settings-title { margin: 0 0 12px; font-size: 12.5px; }
-.settings .switch-row + .switch-row { margin-top: 12px; }
-.settings .hint { margin-top: 10px; }
+.reglages-titre { margin: 0; font-size: 16px; font-weight: 800; }
 
-.studio-title { margin-top: 18px; }
+.retour {
+  justify-self: start;
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 6px 10px 6px 4px;
+  border: 0; border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.retour:hover { background: var(--accent-soft); color: var(--accent); }
+.retour:focus-visible, .site:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sites { display: flex; gap: 8px; margin-bottom: 4px; }
+.site {
+  padding: 7px 14px;
+  border: 0; border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.site:hover { color: var(--accent); }
+.site[aria-selected="true"] { background: var(--text); color: var(--bg); }
+
+.reglages-section {
+  display: flex; align-items: center; gap: 10px;
+  margin: 18px 0 10px;
+  color: var(--muted);
+  font-size: 12px; font-weight: 500;
+  white-space: nowrap;
+}
+.reglages-section::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.reglages-grille {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tuile {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 0; border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.tuile:hover { background: color-mix(in srgb, var(--accent) 16%, var(--accent-soft)); }
+.tuile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tuile svg { flex: none; width: 18px; height: 18px; fill: var(--muted); }
+.tuile-nom { min-width: 0; font-size: 12px; font-weight: 600; line-height: 15px; overflow-wrap: anywhere; }
+
+/* Activée : la case se remplit de la couleur de l'extension. */
+.tuile[aria-checked="true"] { background: var(--accent); color: #fff; }
+.tuile[aria-checked="true"]:hover { background: var(--accent-hover); }
+.tuile[aria-checked="true"] svg { fill: #fff; }
+
+.reglages-aide {
+  min-height: 46px;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.reglages-pied { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 11px; }

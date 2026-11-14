@@ -133,21 +133,24 @@ Quatre ajouts, inspirés de **Better YouTube Studio** (SQUIDUU) — mais sans ja
 
 ## Paramètres
 
-| Réglage | Effet |
-|---|---|
-| **Bouton transcription** | affiche ou retire le **☰** à côté du J'aime |
-| **Bouton export vidéos** | affiche ou retire le **⤓** en haut de page |
-| **Bouton capture d'écran** | affiche ou retire le **📷** du lecteur |
-| **Enregistrer un fichier** | télécharge un fichier **en plus** de la copie : `.csv` pour les exports, `.png` pour une capture |
-| **Classement sur 10** | affiche le panneau, et les onglets Vidéos / Shorts dans Studio — et coupe les seules requêtes de l'extension |
-| **Masquer les revenus** | floute les montants dans YouTube Studio (désactivé par défaut) |
-| **Flèches de tendance des vues** | affiche ou retire les flèches de la page *Contenu* de Studio |
-| **Zoom sur la rétention** | active ou coupe le zoom à la molette dans le graphique de rétention |
+La **roue crantée** en haut du popup ouvre l'écran des paramètres : une **case cliquable** par réglage, pleine quand il est actif, rangées par site (onglets **YouTube** et **YouTube Studio**) puis par section. Survoler une case explique ce qu'elle fait. Ouvert depuis Studio, l'écran montre directement l'onglet Studio.
+
+| Site | Case | Effet |
+|---|---|---|
+| YouTube | **Bouton transcription** | affiche ou retire le **☰** à côté du J'aime |
+| YouTube | **Bouton capture d'écran** | affiche ou retire le **📷** du lecteur |
+| YouTube | **Classement sur 10** | affiche le panneau de la page de lecture — et coupe ses requêtes |
+| YouTube | **Export des vidéos** | affiche ou retire le **⤓** en haut de page |
+| YouTube | **Enregistrer un fichier** | télécharge un fichier **en plus** de la copie : `.csv` pour les exports, `.png` pour une capture |
+| Studio | **Masquer les revenus** | floute les montants (désactivé par défaut) |
+| Studio | **Onglets Vidéos / Shorts** | le classement séparé du tableau de bord — et coupe ses requêtes |
+| Studio | **Zoom sur la rétention** | active ou coupe le zoom à la molette |
+| Studio | **Flèches de tendance des vues** | affiche ou retire les flèches de la page *Contenu* |
 
 Les changements s'appliquent **immédiatement**, sans recharger l'onglet.
 
 <div align="center">
-<img src="screenshots/02_parametres.png" width="420" alt="La section Paramètres du popup">
+<img src="screenshots/02_parametres.png" width="420" alt="L’écran Paramètres du popup : des cases cliquables par site et par section">
 </div>
 
 ## Vie privée
@@ -174,6 +177,12 @@ Aucune API ne permet à une extension de réécrire ses propres fichiers : on pa
 Garde-fous : tout est téléchargé **avant** d'écrire quoi que ce soit (une coupure réseau ne laisse pas l'extension à moitié à jour), seuls les fichiers qui ont **changé** sont réécrits, le dossier choisi doit bien être celui de YouTube Tools, et la seule adresse contactée est `raw.githubusercontent.com`, sans cookie. Si un fichier ne peut pas être écrit (un antivirus qui le bloque, par exemple), les autres le sont quand même, la page dit lequel, et la nouvelle version n'est pas annoncée tant que tout n'est pas en place. Ça ne concerne que l'installation « non empaquetée » décrite plus haut. Mécanisme repris de [youtube-ad-tool](https://github.com/Slipers/youtube-ad-tool).
 
 ## Lancer les tests
+
+```bash
+cd tests && npm install && node run.js
+```
+
+Tous les outils, sur des pages YouTube et Studio simulées (jsdom) : **aucune requête réseau**. Les tests qui ont besoin d'une vraie page de lecture enregistrée la cherchent dans `Téléchargements/HTML DE LA PAGE.txt` (ou dans la variable `YTTOOLS_DUMP`) et sont ignorés sans elle — voir [`tests/_outils.js`](tests/_outils.js).
 
 ```bash
 node youtube-tools/tests/rank-core.test.js
@@ -218,9 +227,11 @@ youtube-tools/
 ├── studio-retention.js Studio : zoom dans le graphique de rétention
 ├── studio-revenus.js   Studio : revenus floutés
 ├── studio.css       styles des ajouts à Studio
-├── tests/           tests du cœur de calcul
+├── tests/           test du cœur de calcul, contre de vraies chaînes
 └── icons/           16 / 32 / 48 / 128 px
 ```
+
+À la racine du dépôt, `tests/` réunit les tests de tous les outils (`node run.js`). Ils ne font pas partie de l'extension publiée.
 
 ## Crédits
 
