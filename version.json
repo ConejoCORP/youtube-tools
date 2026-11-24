@@ -1,6 +1,6 @@
 {
-  "version": "3.17.0",
-  "ref": "66bc9842d06f093028946ae1204cad5b98c0b90d",
+  "version": "3.18.0",
+  "ref": "5ac88ebb3d31fd0199439fb1a65ac50ea62cae66",
   "files": [
     "background.js",
     "capture.css",
@@ -46,6 +46,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Résumés plus lisibles. Vidéo : « En bref », puis la vidéo chapitre par chapitre, avec un titre et quelques points courts. Les timecodes ne sont plus que de petites références cliquables au bout des lignes, et le découpage suit les chapitres de la vidéo quand elle en a. Commentaires : une jauge verte et rouge (avis positifs et négatifs), puis Ce qui plaît, Ce qui déplaît et Ce que les gens demandent, en points courts.",
+  "notes": "Résumé des commentaires : une flèche à côté du bouton pour choisir combien de commentaires analyser (50 à 500), avec une mise en garde sur les grandes quantités. Une fois le résumé fait, le bouton devient « Demander plus d'infos » : pose une question à Gemini sur les commentaires (qui a dit quoi, de quoi il parle…). Tout reste en mémoire tant que l'onglet est ouvert.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
