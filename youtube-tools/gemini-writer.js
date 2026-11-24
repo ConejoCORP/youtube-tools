@@ -164,6 +164,11 @@
    * Une ligne de Markdown brut -> un bloc. Sert quand Gemini rend sa reponse
    * dans un bloc de code au lieu de la mettre en forme.
    */
+  /** Le bloc, plus `gras` (les passages en gras, dans l'ordre) s'il y en a. */
+  const avecGras = (bloc, gras) => (gras.length ? { ...bloc, gras } : bloc);
+  const grasMarkdown = (t) => Array.from(String(t).matchAll(/\*\*(.+?)\*\*/g), (m) => clean(m[1])).filter(Boolean);
+  const grasDuDom = (el) => Array.from(el.querySelectorAll('strong, b'), (x) => clean(x.textContent)).filter(Boolean);
+
   function blocDeLigne(ligne) {
     const t = ligne.trim();
     if (!t) return null;
@@ -172,14 +177,19 @@
     const li = t.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
     // Une puce indentee est une sous-puce : le resume en chapitres s'en sert.
     const retrait = (ligne.match(/^\s*/) || [''])[0].replace(/\t/g, '    ').length;
-    if (li) return { type: 'li', depth: retrait >= 2 ? 1 : 0, text: clean(li[1].replace(/\*\*/g, '')) };
-    return { type: 'p', text: clean(t.replace(/\*\*/g, '')) };
+    if (li) return avecGras({ type: 'li', depth: retrait >= 2 ? 1 : 0, text: clean(li[1].replace(/\*\*/g, '')) }, grasMarkdown(li[1]));
+    // « > … » : une citation (un commentaire cite mot pour mot).
+    const cite = t.match(/^>\s*(.*)$/);
+    if (cite) return cite[1] ? avecGras({ type: 'p', cite: true, text: clean(cite[1].replace(/\*\*/g, '')) }, grasMarkdown(cite[1])) : null;
+    return avecGras({ type: 'p', text: clean(t.replace(/\*\*/g, '')) }, grasMarkdown(t));
   }
 
   /**
    * La reponse en blocs { type: 'h' | 'p' | 'li', text }, plus `level` pour un
    * titre (1 a 6, 0 pour un paragraphe tout en gras) et `depth` pour une puce
-   * (0, ou 1 et plus pour une sous-puce).
+   * (0, ou 1 et plus pour une sous-puce). En option : `gras`, les passages en
+   * gras ; `cite: true` sur un paragraphe venu d'une citation (> …). Le texte,
+   * lui, reste nu : les resumes qui le decoupent n'ont rien a changer.
    *
    * On lit la STRUCTURE rendue par Gemini plutot que son texte a plat : un
    * titre « ## Points cles » devient un <h2> dont le texte ne garde aucun
@@ -205,13 +215,18 @@
           // Un paragraphe entierement en gras fait office de titre.
           const seul = n.children.length === 1 && /^(STRONG|B)$/.test(n.children[0].tagName) &&
                        clean(n.children[0].textContent) === clean(n.textContent);
-          pousse(seul ? { type: 'h', level: 0, text: clean(n.textContent) } : { type: 'p', text: clean(n.textContent) });
+          pousse(seul ? { type: 'h', level: 0, text: clean(n.textContent) } : avecGras({ type: 'p', text: clean(n.textContent) }, grasDuDom(n)));
+        } else if (tag === 'BLOCKQUOTE') {
+          const paras = Array.from(n.querySelectorAll('p'));
+          for (const p of paras.length ? paras : [n]) {
+            pousse(avecGras({ type: 'p', cite: true, text: clean(p.textContent) }, grasDuDom(p)));
+          }
         } else if (tag === 'UL' || tag === 'OL') {
           for (const li of Array.from(n.children)) {
             if (li.tagName !== 'LI') continue;
             const copie = li.cloneNode(true);
             copie.querySelectorAll('ul, ol').forEach((x) => x.remove());
-            pousse({ type: 'li', depth, text: clean(copie.textContent) });
+            pousse(avecGras({ type: 'li', depth, text: clean(copie.textContent) }, grasDuDom(copie)));
             Array.from(li.children).filter((c) => /^(UL|OL)$/.test(c.tagName))
               .forEach((sous) => parcours({ children: [sous] }, depth + 1));
           }

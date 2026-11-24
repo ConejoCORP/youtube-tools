@@ -133,6 +133,23 @@ const RESUME = [
     verifie('reconnu comme titre', blocs[0] && blocs[0].type === 'h' && blocs[0].text === 'En bref', blocs);
   }
 
+  console.log('\n3 bis. Gras et citations gardes (reponses aux questions)');
+  {
+    const { window } = gemini({
+      morceaux: ['<p>Deux personnes en parlent.</p><ul><li><p><strong>Le titre</strong> : un accord.</p></li></ul>'
+        + '<blockquote><p>@margot.r : « vis » est féminin</p></blockquote>'],
+      pause: 0
+    });
+    const blocs = await window.__yttoolsGemini.run('Question.', 60000);
+    const li = blocs.find((b) => b.type === 'li');
+    verifie('passage en gras garde a cote du texte nu', li && li.text === 'Le titre : un accord.' && li.gras && li.gras[0] === 'Le titre', li);
+    const cite = blocs.find((b) => b.cite);
+    verifie('citation reconnue', cite && cite.type === 'p' && cite.text === '@margot.r : « vis » est féminin', blocs);
+    verifie('pas de gras : pas de champ en plus', !('gras' in blocs[0]));
+    const md = window.__yttoolsGemini.blocDeLigne('> @lea : « super **vidéo** »');
+    verifie('Markdown brut : « > » = citation, gras releve', md && md.cite && md.text === '@lea : « super vidéo »' && md.gras[0] === 'vidéo', md);
+  }
+
   console.log('\n4. Liaison avec l’extension (le chemin reel)');
   for (const connecte of [false, true]) {
     const recus = [];

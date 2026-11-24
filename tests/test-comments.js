@@ -33,7 +33,12 @@ const BLOCS = [
 ];
 
 // Reponse de Gemini a une question sur les commentaires.
-const REPONSE_QR = [{ type: 'p', text: 'C’est @un_internaute : il trouve que « du coup » revient trop souvent.' }];
+// Une phrase, un point avec son sujet en gras, un commentaire cite (> @pseudo : « … »).
+const REPONSE_QR = [
+  { type: 'p', text: 'C’est @un_internaute : il trouve que « du coup » revient trop souvent.' },
+  { type: 'li', text: 'Le titre : le verbe devrait être au pluriel.', gras: ['Le titre'] },
+  { type: 'p', cite: true, text: '@auteur1_3 : « Commentaire charge 1-3 »' }
+];
 
 /**
  * sansContinuation : la continuation de la liste est absente au clic, et
@@ -288,11 +293,45 @@ async function resumer(ctx) {
     verifie('… avec TOUS les commentaires gardes', (q1.match(/^\[\d+ like/gm) || []).length === 50);
     verifie('… et le resume deja fait', /Ton résumé :/.test(q1) && /Ce qui déplaît :\n- Une scène jugée trop longue/.test(q1));
     verifie('… et la question, a la fin', /\nNouvelle question : C’est qui, et de quoi il parle \?\n/.test(q1) && !/Questions déjà posées/.test(q1));
-    verifie('qui l’a ecrit et ses mots exacts demandes', /@pseudo/.test(q1) && /mots exacts entre guillemets/.test(q1));
+    verifie('format de conversation demande : sujets en gras, citations « > @pseudo : … »',
+      /\n> @pseudo : « ses mots exacts »\n/.test(q1) && /\*\*Le titre\*\*/.test(q1) && /Pas de tableau/.test(q1));
     const questions = () => [...card().querySelectorAll('.yttools-cm-q')].map((q) => q.textContent);
     verifie('question et reponse affichees sous le resume', questions().join('|') === 'C’est qui, et de quoi il parle ?'
       && /du coup » revient trop souvent/.test(card().querySelector('.yttools-cm-r').textContent));
     verifie('le champ se libere', !champ.disabled && champ.value === '');
+
+    console.log('\n7 bis. La reponse, facon Gemini');
+    const r = card().querySelector('.yttools-cm-r');
+    verifie('l’etoile de Gemini a gauche de la reponse', r && r.firstElementChild.className === 'yttools-cm-etoile' && !!r.querySelector('svg'));
+    verifie('le sujet du point en gras', r && r.querySelector('li strong') && r.querySelector('li strong').textContent === 'Le titre');
+    const carte = r && r.querySelector('.yttools-cm-com');
+    verifie('commentaire cite affiche comme un commentaire', !!carte
+      && carte.querySelector('.yttools-cm-pseudo').textContent === '@auteur1_3'
+      && carte.querySelector('.yttools-cm-likes').textContent === '13 likes'
+      && carte.querySelector('.yttools-cm-com-texte').textContent === 'Commentaire charge 1-3'
+      && carte.querySelector('.yttools-cm-av').textContent === 'A', carte && carte.textContent);
+    verifie('@pseudo dans le texte : cliquable', r && [...r.querySelectorAll('p > .yttools-cm-pseudo')].some((b) => b.textContent === '@un_internaute'));
+    clic(ctx, carte.querySelector('.yttools-cm-pseudo'));
+    const vise = [...ctx.doc.querySelectorAll('ytd-comment-thread-renderer')].find((f) => f.classList.contains('yttools-cm-vise'));
+    verifie('clic sur le pseudo : son commentaire est montre dans la page',
+      vise && vise.querySelector('#author-text').textContent === '@auteur1_3');
+    verifie('bouton pour copier la reponse', r && !!r.querySelector('.yttools-cm-copier[aria-label="Copier la réponse"]'));
+    verifie('champ en pilule, envoi par une fleche', !!saisie.querySelector('.yttools-cm-ligne .yttools-cm-envoyer svg')
+      && /Demande à Gemini/.test(champ.placeholder) && !saisie.querySelector('.yttools-cm-aide'));
+
+    const C = ctx.window.__yttoolsComments;
+    const essai = (blocks, coms) => { const el = ctx.doc.createElement('div'); C.rendreReponse(el, blocks, { coms }); return el; };
+    const invente = essai([{ type: 'p', cite: true, text: '@margot : « une phrase que personne n’a écrite »' }],
+      [{ auteur: '@margot', texte: 'Le vrai commentaire de Margot', likes: 2 }]);
+    verifie('citation introuvable dans le vrai commentaire : le vrai texte s’affiche',
+      invente.querySelector('.yttools-cm-com-texte').textContent === 'Le vrai commentaire de Margot');
+    const inconnu = essai([{ type: 'p', text: '@personne : « un avis »' }], []);
+    verifie('auteur inconnu : sa citation, sans likes inventes',
+      inconnu.querySelector('.yttools-cm-com-texte') && inconnu.querySelector('.yttools-cm-com-texte').textContent === 'un avis'
+      && !inconnu.querySelector('.yttools-cm-likes'));
+    const piege = essai([{ type: 'p', text: '<img src=x onerror=alert(1)> **gras** @x', gras: ['<img src=x onerror=alert(1)>'] }], []);
+    verifie('rien de Gemini n’est interprete comme du HTML', !piege.querySelector('img') && /<img src=x/.test(piege.textContent));
+    verifie('adresse e-mail : pas prise pour un pseudo', !essai([{ type: 'p', text: 'ecris a moi@exemple.fr' }], []).querySelector('.yttools-cm-pseudo'));
 
     champ.value = 'Il y en a d’autres qui disent pareil ?';
     clic(ctx, saisie.querySelector('.yttools-cm-envoyer'));
@@ -328,6 +367,45 @@ async function resumer(ctx) {
     verifie('nouveau resume sur 100 commentaires', lignesDuPrompt(ctx.prompts[avant]) === 100, lignesDuPrompt(ctx.prompts[avant]));
     const c = ctx.doc.getElementById('yttools-comments-card');
     verifie('les questions de l’ancien resume sont effacees', c && c.querySelectorAll('.yttools-cm-q').length === 0);
+  }
+
+  console.log('\n9. Pendant la recuperation : page floutee, message au centre');
+  {
+    const p = page({ lenteur: 700 });
+    await sleep(1200);
+    clic(p, p.doc.getElementById('yttools-comments-btn'));
+    await sleep(100);
+    const voile = () => p.doc.getElementById('yttools-cm-voile');
+    const v = voile();
+    verifie('voile pose sur toute la page', v && v.parentElement === p.doc.body && v.getAttribute('aria-modal') === 'true');
+    verifie('message au centre', v && v.querySelector('.yttools-cm-voile-titre').textContent === 'Récupération des commentaires en cours');
+    verifie('progression affichee', v && /^\d+ \/ 100 commentaires$/.test(v.querySelector('.yttools-cm-voile-compte').textContent),
+      v && v.querySelector('.yttools-cm-voile-compte').textContent);
+    verifie('pas de texte d’explication en plus', v && v.querySelectorAll('p').length === 2);
+    verifie('« Annuler » a la main', v && p.doc.activeElement === v.querySelector('.yttools-cm-voile-annuler'));
+
+    let fuite = 0;
+    p.doc.addEventListener('keydown', () => { fuite++; });
+    const touche = new p.window.KeyboardEvent('keydown', { key: 'k', bubbles: true, cancelable: true });
+    p.doc.body.dispatchEvent(touche);
+    verifie('les raccourcis de YouTube sont bloques', fuite === 0 && touche.defaultPrevented, fuite);
+    const molette = new p.window.WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true });
+    p.doc.body.dispatchEvent(molette);
+    verifie('la molette ne fait pas defiler la page', molette.defaultPrevented);
+
+    p.doc.body.dispatchEvent(new p.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    verifie('Echap : le voile disparait tout de suite', !voile());
+    await sleep(1500);
+    verifie('… rien n’est envoye a Gemini', p.prompts.length === 0, p.prompts.length);
+    verifie('… le panneau se ferme, le bouton revient', !p.doc.getElementById('yttools-comments-card')
+      && /Résumer 100 commentaires/.test(p.doc.getElementById('yttools-comments-btn').textContent));
+    verifie('… la page est remise a sa place', p.y() === 1800, p.y());
+    const apres = new p.window.WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true });
+    p.doc.body.dispatchEvent(apres);
+    verifie('… et la molette remarche', !apres.defaultPrevented);
+
+    await resumer(p);
+    verifie('resume normal : le voile s’en va une fois les commentaires recuperes', !voile() && p.prompts.length === 1);
   }
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));

@@ -678,7 +678,14 @@ html[dark] .yttools-ai-card:not([data-theme]) {
 .yttools-cm-menu[data-theme="dark"] .yttools-cm-refaire { background: rgba(255, 255, 255, .1); }
 .yttools-cm-menu[data-theme="dark"] .yttools-cm-refaire:hover { background: rgba(255, 255, 255, .16); }
 
-/* ------------------------------------- questions sur les commentaires */
+/* ------------------------------------- questions sur les commentaires
+   Façon conversation Gemini : la question dans une bulle à droite, la
+   réponse à gauche avec l'étoile, en plus grand et plus aéré que le reste
+   du panneau. Les commentaires cités ont l'air de vrais commentaires. */
+
+.yttools-cm-echange {
+  max-width: 820px;
+}
 
 .yttools-cm-echange:empty {
   display: none;
@@ -686,20 +693,195 @@ html[dark] .yttools-ai-card:not([data-theme]) {
 
 .yttools-ai-card .yttools-cm-q {
   width: fit-content;
-  max-width: 85%;
-  margin: 14px 0 6px auto;
-  padding: 6px 12px;
-  border-radius: 14px 14px 4px 14px;
-  background: rgba(6, 95, 212, .1);
+  max-width: 80%;
+  margin: 20px 0 12px auto;
+  padding: 10px 16px;
+  border-radius: 20px 4px 20px 20px;
+  background: #e3e9f3;
+  font-size: 15px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
 }
 
 .yttools-cm-r {
-  margin: 0 0 4px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
+.yttools-cm-etoile {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* L'étoile tourne doucement pendant que Gemini répond, comme chez lui. */
+.yttools-cm-r.is-attente .yttools-cm-etoile svg {
+  animation: yttools-cm-tourne 2s linear infinite;
+}
+
+@keyframes yttools-cm-tourne {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yttools-cm-r.is-attente .yttools-cm-etoile svg { animation: none; }
+}
+
+.yttools-cm-contenu {
+  flex: 1;
+  min-width: 0;
+}
+
+.yttools-ai-card .yttools-cm-contenu p {
+  margin: 0 0 10px;
+}
+
+.yttools-ai-card .yttools-cm-contenu .yttools-ai-wait {
+  margin: 0;
+  color: var(--yt-spec-text-secondary, #606060);
+}
+
+.yttools-ai-card .yttools-cm-contenu ul {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  list-style: disc;
+}
+
+.yttools-ai-card .yttools-cm-contenu li {
+  margin: 0 0 6px;
+  padding: 0;
+}
+
+.yttools-ai-card .yttools-cm-contenu li.is-sous {
+  margin-left: 20px;
+  list-style: circle;
+}
+
+.yttools-cm-contenu strong {
+  font-weight: 600;
+}
+
+.yttools-ai-card .yttools-cm-st {
+  margin: 14px 0 4px;
+  font-weight: 600;
+}
+
+/* Un @pseudo : un clic amène son commentaire à l'écran. */
+.yttools-cm-pseudo {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #065fd4;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.yttools-cm-pseudo:hover {
+  text-decoration: underline;
+}
+
+/* Un commentaire cité : avatar, pseudo, likes, puis ses mots. */
+.yttools-cm-com {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(0, 0, 0, .1);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.yttools-cm-av {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.yttools-cm-com-corps {
+  min-width: 0;
+}
+
+.yttools-cm-com-tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.yttools-cm-likes {
+  color: var(--yt-spec-text-secondary, #606060);
+  font-size: 12px;
+}
+
+.yttools-cm-likes::before {
+  content: "· ";
+}
+
+.yttools-ai-card .yttools-cm-com .yttools-cm-com-texte {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+/* Une citation sans auteur reconnu. */
+.yttools-ai-card .yttools-cm-cite {
+  margin: 4px 0 10px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid rgba(0, 0, 0, .15);
+  border-radius: 0;
+  font-style: italic;
+}
+
+.yttools-cm-actions {
+  display: flex;
+  gap: 4px;
+  margin: -4px 0 0 -8px;
+}
+
+.yttools-cm-copier {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--yt-spec-text-secondary, #606060);
+  cursor: pointer;
+}
+
+.yttools-cm-copier:hover {
+  background: rgba(0, 0, 0, .08);
+}
+
+.yttools-cm-copier.is-ok {
+  color: #1e8e3e;
+}
+
+/* Le commentaire visé par un clic sur un @pseudo, souligné un instant. */
+.yttools-cm-vise {
+  border-radius: 12px;
+  outline: 2px solid #065fd4;
+  outline-offset: 4px;
+}
+
+/* Le champ : une pilule, le bouton d'envoi rond à l'intérieur. */
 .yttools-cm-saisie {
-  padding: 10px 14px 12px;
-  border-top: 1px solid rgba(0, 0, 0, .1);
+  padding: 8px 14px 14px;
 }
 
 .yttools-cm-saisie[hidden] {
@@ -708,37 +890,48 @@ html[dark] .yttools-ai-card:not([data-theme]) {
 
 .yttools-cm-ligne {
   display: flex;
+  align-items: center;
   gap: 8px;
+  box-sizing: border-box;
+  max-width: 820px;
+  padding: 4px 4px 4px 20px;
+  border: 1px solid transparent;
+  border-radius: 28px;
+  background: #fff;
+}
+
+.yttools-cm-ligne:focus-within {
+  border-color: #065fd4;
 }
 
 .yttools-cm-champ {
   flex: 1;
   min-width: 0;
-  box-sizing: border-box;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid rgba(0, 0, 0, .2);
-  border-radius: 18px;
+  height: 40px;
+  padding: 0;
+  border: none;
   background: transparent;
   color: inherit;
   font: inherit;
+  font-size: 15px;
 }
 
 .yttools-cm-champ:focus {
   outline: none;
-  border-color: #065fd4;
 }
 
 .yttools-cm-envoyer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  height: 36px;
-  padding: 0 16px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border: none;
-  border-radius: 18px;
+  border-radius: 50%;
   background: #065fd4;
   color: #fff;
-  font: inherit;
-  font-weight: 500;
   cursor: pointer;
 }
 
@@ -748,15 +941,103 @@ html[dark] .yttools-ai-card:not([data-theme]) {
   cursor: default;
 }
 
-.yttools-ai-card .yttools-cm-aide {
-  margin: 6px 0 0;
-  color: var(--yt-spec-text-secondary, #606060);
-  font-size: 12px;
+.yttools-ai-card[data-theme="dark"] .yttools-cm-q { background: #3a3c3f; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-pseudo { color: #3ea6ff; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-com { border-color: rgba(255, 255, 255, .12); background: #1f1f1f; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-likes,
+.yttools-ai-card[data-theme="dark"] .yttools-cm-copier,
+.yttools-ai-card[data-theme="dark"] .yttools-cm-contenu .yttools-ai-wait { color: var(--yt-spec-text-secondary, #aaa); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-copier:hover { background: rgba(255, 255, 255, .1); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-copier.is-ok { color: #81c995; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-cite { border-left-color: rgba(255, 255, 255, .25); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-ligne { background: #1f1f1f; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-ligne:focus-within { border-color: #3ea6ff; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-envoyer { background: #3ea6ff; color: #0f0f0f; }
+html[dark] .yttools-cm-vise { outline-color: #3ea6ff; }
+
+/* --------------------------------- voile pendant la récupération
+   Toute la page floutée, un message au centre : l'extension a la main. */
+
+#yttools-cm-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .25);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
-.yttools-ai-card[data-theme="dark"] .yttools-cm-q { background: rgba(62, 166, 255, .16); }
-.yttools-ai-card[data-theme="dark"] .yttools-cm-saisie { border-top-color: rgba(255, 255, 255, .15); }
-.yttools-ai-card[data-theme="dark"] .yttools-cm-champ { border-color: rgba(255, 255, 255, .25); }
-.yttools-ai-card[data-theme="dark"] .yttools-cm-champ:focus { border-color: #3ea6ff; }
-.yttools-ai-card[data-theme="dark"] .yttools-cm-envoyer { background: #3ea6ff; color: #0f0f0f; }
-.yttools-ai-card[data-theme="dark"] .yttools-cm-aide { color: var(--yt-spec-text-secondary, #aaa); }
+.yttools-cm-voile-carte {
+  box-sizing: border-box;
+  width: 390px;
+  max-width: calc(100vw - 32px);
+  padding: 24px 26px 22px;
+  border-radius: 16px;
+  background: #fff;
+  color: #0f0f0f;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .25);
+}
+
+.yttools-cm-voile-icone {
+  display: inline-flex;
+  color: #065fd4;
+}
+
+.yttools-cm-voile-titre {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.yttools-cm-voile-barre {
+  height: 6px;
+  margin: 16px 0 8px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, .1);
+}
+
+.yttools-cm-voile-barre i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: #065fd4;
+  transition: width .3s ease;
+}
+
+.yttools-cm-voile-compte {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.yttools-cm-voile-annuler {
+  height: 36px;
+  padding: 0 20px;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 18px;
+  background: transparent;
+  color: inherit;
+  font: 500 14px "Roboto", "Arial", sans-serif;
+  cursor: pointer;
+}
+
+.yttools-cm-voile-annuler:hover {
+  background: rgba(0, 0, 0, .06);
+}
+
+#yttools-cm-voile[data-theme="dark"] { background: rgba(0, 0, 0, .4); }
+#yttools-cm-voile[data-theme="dark"] .yttools-cm-voile-carte { background: #212121; color: #f1f1f1; }
+#yttools-cm-voile[data-theme="dark"] .yttools-cm-voile-icone { color: #3ea6ff; }
+#yttools-cm-voile[data-theme="dark"] .yttools-cm-voile-barre i { background: #3ea6ff; }
+#yttools-cm-voile[data-theme="dark"] .yttools-cm-voile-barre { background: rgba(255, 255, 255, .15); }
+#yttools-cm-voile[data-theme="dark"] .yttools-cm-voile-annuler { border-color: rgba(255, 255, 255, .3); }
+#yttools-cm-voile[data-theme="dark"] .yttools-cm-voile-annuler:hover { background: rgba(255, 255, 255, .1); }

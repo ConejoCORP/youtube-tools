@@ -139,9 +139,9 @@
   }
 
   /** Attend que de nouveaux fils arrivent, jusqu'a `max` ms. */
-  async function attendreDeNouveaux(n, max) {
+  async function attendreDeNouveaux(n, max, continuer = () => true) {
     const fin = Date.now() + max;
-    while (Date.now() < fin) {
+    while (Date.now() < fin && continuer()) {
       await sleep(250);
       if (fils().length > n) { await sleep(400); return fils().length; }   // laisse finir le lot
     }
@@ -154,13 +154,13 @@
    * on y amene le dernier commentaire puis la continuation, et on descend
    * encore d'une demi-page — ce qui marche quel que soit le declencheur exact.
    */
-  async function charger(cible, onProgres) {
+  async function charger(cible, onProgres, continuer = () => true) {
     const y0 = window.scrollY;
     const fin = Date.now() + delaiChargement(cible);
     let n = fils().length;
     let surPlace = 0;
     try {
-      while (n < cible && Date.now() < fin) {
+      while (n < cible && Date.now() < fin && continuer()) {
         // On n'exige PAS la continuation pour defiler : YouTube peut ne
         // l'inserer qu'une fois la fin de la liste a l'ecran. Faire descendre
         // la fenetre au-dela du dernier commentaire suffit a declencher la suite.
@@ -171,7 +171,7 @@
         if (suite) suite.scrollIntoView({ block: 'end' });
         window.scrollBy(0, Math.round((window.innerHeight || 800) / 2));
 
-        const n2 = await attendreDeNouveaux(n, 3000);
+        const n2 = await attendreDeNouveaux(n, 3000, continuer);
         onProgres(n2);
         if (n2 === n) {
           surPlace++;
@@ -255,7 +255,7 @@
 
   /** Des blocs de Gemini -> du texte, pour les lui redonner dans une question suivante. */
   function texteDesBlocs(blocks) {
-    return (blocks || []).map((b) => (b.type === 'h' ? `## ${b.text}` : b.type === 'li' ? `- ${b.text}` : b.text)).join('\n');
+    return (blocks || []).map((b) => (b.type === 'h' ? `## ${b.text}` : b.type === 'li' ? `- ${b.text}` : b.cite ? `> ${b.text}` : b.text)).join('\n');
   }
 
   /** Le resume deja fait, en texte. */
@@ -296,9 +296,16 @@
       ...(precedentes.length ? ['Questions déjà posées :', precedentes.join('\n\n'), ''] : []),
       `Nouvelle question : ${question}`,
       '',
-      'Réponds en français, brièvement : quelques phrases ou une courte liste. Appuie-toi uniquement sur les '
-        + 'commentaires ci-dessus. Quand ça aide, dis qui l’a écrit (@pseudo) et cite ses mots exacts entre guillemets. '
-        + 'Si les commentaires ne permettent pas de répondre, dis-le simplement.'
+      // Mise en forme d'une conversation avec Gemini : une phrase qui repond,
+      // des points dont le sujet est en gras, et chaque commentaire cite seul
+      // sur sa ligne (« > @pseudo : … »), que YouTube Tools affiche comme un
+      // vrai commentaire.
+      'Réponds en français, comme dans une conversation : d’abord une phrase courte qui répond, puis, si besoin, '
+        + 'quelques points courts qui commencent par leur sujet en gras (**Le titre** : …). '
+        + 'Appuie-toi uniquement sur les commentaires ci-dessus. Quand ça aide, cite le commentaire : seul sur sa ligne, '
+        + 'en citation, avec son auteur et ses mots exacts, comme ceci :',
+      '> @pseudo : « ses mots exacts »',
+      'Pas de tableau. Si les commentaires ne permettent pas de répondre, dis-le simplement.'
     ].join('\n');
   }
 
@@ -682,19 +689,205 @@
 
   /* ------------------------------------------ questions sur les commentaires */
 
+  /*
+   * Mise en forme facon conversation Gemini : la question dans une bulle a
+   * droite, la reponse a gauche avec l'etoile, les sujets en gras, et chaque
+   * commentaire cite affiche comme un vrai commentaire (pseudo, likes, mots).
+   * Tout est construit en noeuds (textContent) : rien de Gemini n'est
+   * interprete comme du HTML.
+   */
+
+  const COPIER = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+  const FLECHE_HAUT = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M11 20V7.83l-5.59 5.58L4 12l8-8 8 8-1.41 1.41L13 7.83V20z"/></svg>';
+  const COULEURS_AVATAR = ['#1d9e75', '#d85a30', '#7f77dd', '#d4537e', '#378add', '#ba7517', '#639922', '#0f6e56'];
+
+  // Un pseudo YouTube : @lettres, chiffres, _ - et des points entre deux caracteres.
+  const PSEUDO = /(?<![\p{L}\p{N}_@])@[\p{L}\p{N}_-]+(?:\.[\p{L}\p{N}_-]+)*/gu;
+  const CITATION = /^(@[\p{L}\p{N}_-]+(?:\.[\p{L}\p{N}_-]+)*)\s*[:：–—-]?\s*([\s\S]*)$/u;
+  const memePseudo = (a, b) => minuscules(a) === minuscules(b);
+
+  /** Le fil d'un auteur dans la page (le premier s'il en a ecrit plusieurs). */
+  function filDe(pseudo) {
+    return Array.from(fils()).find((f) => {
+      const a = f.querySelector('#author-text');
+      return a && memePseudo(clean(a.textContent), pseudo);
+    }) || null;
+  }
+
+  /** Amene le commentaire a l'ecran et le souligne un instant. */
+  function allerAuCommentaire(pseudo) {
+    const fil = filDe(pseudo);
+    if (!fil) return false;
+    fil.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    fil.classList.add('yttools-cm-vise');
+    setTimeout(() => fil.classList.remove('yttools-cm-vise'), 2500);
+    return true;
+  }
+
+  function lienPseudo(pseudo) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'yttools-cm-pseudo';
+    b.textContent = pseudo;
+    b.title = 'Voir son commentaire dans la page';
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!allerAuCommentaire(pseudo)) b.title = 'Ce commentaire n’est plus affiché dans la page';
+    });
+    return b;
+  }
+
+  /** Un texte -> noeuds : pseudos cliquables, timecodes en liens. */
+  function avecPseudos(texte) {
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    for (const m of texte.matchAll(PSEUDO)) {
+      if (m.index > pos) frag.append(TV.ai.avecLiens(texte.slice(pos, m.index)).frag);
+      frag.append(lienPseudo(m[0]));
+      pos = m.index + m[0].length;
+    }
+    if (pos < texte.length) frag.append(TV.ai.avecLiens(texte.slice(pos)).frag);
+    return frag;
+  }
+
+  /** Le texte d'un bloc, ses passages en gras (bloc.gras) remis en gras. */
+  function enLigne(el, bloc) {
+    const texte = bloc.text || '';
+    let pos = 0;
+    for (const g of bloc.gras || []) {
+      const i = texte.indexOf(g, pos);
+      if (i < 0) continue;
+      if (i > pos) el.append(avecPseudos(texte.slice(pos, i)));
+      const fort = document.createElement('strong');
+      fort.append(avecPseudos(g));
+      el.append(fort);
+      pos = i + g.length;
+    }
+    if (pos < texte.length) el.append(avecPseudos(texte.slice(pos)));
+  }
+
+  /** Retire UNE paire de guillemets autour de la citation, pas ceux qu'elle contient. */
+  function sansGuillemets(t) {
+    const m = clean(t).match(/^[«"“]\s*([\s\S]*?)\s*[»"”]$/);
+    return m ? m[1] : clean(t);
+  }
+
+  /**
+   * « @pseudo : « mots » » -> une carte de commentaire. Les likes viennent des
+   * commentaires relevés, pas de Gemini. Si sa citation ne se retrouve pas
+   * dans le vrai commentaire, c'est le vrai texte qui s'affiche.
+   */
+  function carteCitation(texte, d) {
+    const m = clean(texte).match(CITATION);
+    if (!m) {
+      const q = document.createElement('blockquote');
+      q.className = 'yttools-cm-cite';
+      enLigne(q, { text: texte });
+      return q;
+    }
+    const pseudo = m[1];
+    const mots = sansGuillemets(m[2]);
+    const com = (d.coms || []).find((c) => memePseudo(c.auteur, pseudo)) || null;
+    const debut = minuscules(mots).replace(/[^\p{L}\p{N}]+/gu, ' ').trim().slice(0, 30);
+    const fidele = !com || (debut && minuscules(com.texte).replace(/[^\p{L}\p{N}]+/gu, ' ').includes(debut));
+
+    const carte = document.createElement('div');
+    carte.className = 'yttools-cm-com';
+    const av = document.createElement('span');
+    av.className = 'yttools-cm-av';
+    av.textContent = (pseudo.replace(/^@/, '')[0] || '?').toUpperCase();
+    av.style.background = COULEURS_AVATAR[[...pseudo].reduce((h, c) => (h * 31 + c.codePointAt(0)) >>> 0, 7) % COULEURS_AVATAR.length];
+    av.setAttribute('aria-hidden', 'true');
+
+    const corps = document.createElement('div');
+    corps.className = 'yttools-cm-com-corps';
+    const tete = document.createElement('div');
+    tete.className = 'yttools-cm-com-tete';
+    tete.append(lienPseudo(com ? com.auteur : pseudo));
+    if (com) {
+      const likes = document.createElement('span');
+      likes.className = 'yttools-cm-likes';
+      likes.textContent = `${com.likes} like${com.likes > 1 ? 's' : ''}`;
+      tete.append(likes);
+    }
+    const dit = document.createElement('p');
+    dit.className = 'yttools-cm-com-texte';
+    const affiche = fidele ? (mots || (com && com.texte) || '') : com.texte;
+    dit.append(TV.ai.avecLiens(affiche.length > 400 ? affiche.slice(0, 400) + '…' : affiche).frag);
+    corps.append(tete, dit);
+    carte.append(av, corps);
+    return carte;
+  }
+
+  /** Une reponse de Gemini : paragraphes, sous-titres, puces et commentaires cites. */
+  function rendreReponse(el, blocks, d) {
+    let liste = null;
+    for (const b of blocks || []) {
+      if (b.type === 'li') {
+        if (!liste) { liste = document.createElement('ul'); el.append(liste); }
+        const li = document.createElement('li');
+        if (b.depth > 0) li.className = 'is-sous';
+        enLigne(li, b);
+        liste.append(li);
+        continue;
+      }
+      liste = null;
+      // Une citation, ou une ligne « @pseudo : « … » » qui en a tout l'air.
+      if (b.type === 'p' && (b.cite || /^@\S+\s*:\s*[«"“]/.test(b.text))) {
+        el.append(carteCitation(b.text, d));
+      } else if (b.type === 'h') {
+        const h = document.createElement('p');
+        h.className = 'yttools-cm-st';
+        h.textContent = b.text.replace(/^#+\s*/, '');
+        el.append(h);
+      } else {
+        const p = document.createElement('p');
+        enLigne(p, b);
+        el.append(p);
+      }
+    }
+  }
+
   /** Une question posee, puis sa reponse (ou l'attente, ou l'erreur). */
   function elementsQR(d, x) {
     const q = document.createElement('p');
     q.className = 'yttools-cm-q';
     q.textContent = x.q;                               // textContent : rien n'est interprete
+
     const r = document.createElement('div');
-    r.className = 'yttools-cm-r';
+    r.className = 'yttools-cm-r' + (x.status === 'loading' ? ' is-attente' : '');
+    const etoile = document.createElement('span');
+    etoile.className = 'yttools-cm-etoile';
+    etoile.innerHTML = TV.ai.etoile(20);               // constante, jamais une donnee
+    const contenu = document.createElement('div');
+    contenu.className = 'yttools-cm-contenu';
+    r.append(etoile, contenu);
+
     if (x.status === 'loading') {
-      attente(r, `Gemini relit les ${d.coms.length} commentaires pour te répondre… une petite fenêtre s’est ouverte, elle se refermera toute seule.`);
+      attente(contenu, `Gemini relit les ${d.coms.length} commentaires pour te répondre… une petite fenêtre s’est ouverte, elle se refermera toute seule.`);
     } else if (x.status === 'error') {
-      TV.ai.message(r, TV.ai.erreurLisible(x.error), () => { d.qr.splice(d.qr.indexOf(x), 1); demander(x.q, d); });
+      TV.ai.message(contenu, TV.ai.erreurLisible(x.error), () => { d.qr.splice(d.qr.indexOf(x), 1); demander(x.q, d); });
     } else {
-      TV.ai.renderBlocks(r, x.blocks);
+      rendreReponse(contenu, x.blocks, d);
+      const actions = document.createElement('div');
+      actions.className = 'yttools-cm-actions';
+      const copier = document.createElement('button');
+      copier.type = 'button';
+      copier.className = 'yttools-cm-copier';
+      copier.title = 'Copier la réponse';
+      copier.setAttribute('aria-label', 'Copier la réponse');
+      copier.innerHTML = COPIER;                       // constante, jamais une donnee
+      copier.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const ok = await TV.copyText(texteDesBlocs(x.blocks));
+        copier.title = ok ? 'Copié' : 'Copie impossible';
+        copier.classList.toggle('is-ok', !!ok);
+        setTimeout(() => { copier.title = 'Copier la réponse'; copier.classList.remove('is-ok'); }, 1500);
+      });
+      actions.append(copier);
+      contenu.append(actions);
     }
     return [q, r];
   }
@@ -711,12 +904,15 @@
     champ.type = 'text';
     champ.className = 'yttools-cm-champ';
     champ.maxLength = 500;
-    champ.placeholder = 'Une question sur ces commentaires ? Ex. : c’est qui, et de quoi il parle ?';
+    champ.placeholder = 'Demande à Gemini à propos de ces commentaires';
+    champ.title = 'Gemini relit les commentaires et son résumé pour te répondre. Tout reste en mémoire tant que l’onglet est ouvert.';
     champ.setAttribute('aria-label', 'Question à Gemini sur ces commentaires');
     const envoyer = document.createElement('button');
     envoyer.type = 'button';
     envoyer.className = 'yttools-cm-envoyer';
-    envoyer.textContent = 'Demander';
+    envoyer.title = 'Demander';
+    envoyer.setAttribute('aria-label', 'Demander');
+    envoyer.innerHTML = FLECHE_HAUT;                   // constante, jamais une donnee
 
     const partir = () => {
       const q = clean(champ.value);
@@ -733,12 +929,7 @@
     }
     envoyer.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); partir(); });
     ligne.append(champ, envoyer);
-
-    const aide = document.createElement('p');
-    aide.className = 'yttools-cm-aide';
-    aide.textContent = 'Gemini relit les commentaires et son résumé pour te répondre. '
-      + 'Tout reste en mémoire tant que l’onglet est ouvert.';
-    saisie.append(ligne, aide);
+    saisie.append(ligne);
     return saisie;
   }
 
@@ -804,6 +995,92 @@
     if (card) refreshCard(card);
   }
 
+  /* ------------------------------------------- voile pendant la recuperation */
+
+  /*
+   * Pendant que l'extension fait defiler la page pour charger les
+   * commentaires, toute la page est floutee sous un message central : on
+   * comprend qu'elle a la main, et un clic, la molette ou une touche ne
+   * viennent pas la deranger. « Annuler » (ou Echap) arrete tout.
+   */
+  const VOILE_ID = 'yttools-cm-voile';
+  const BULLE = '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>';
+  const voile = () => document.getElementById(VOILE_ID);
+  let collecte = null;                // le dossier en cours de recuperation
+
+  function montrerVoile(d) {
+    retirerVoile();
+    const v = document.createElement('div');
+    v.id = VOILE_ID;
+    v.setAttribute('role', 'alertdialog');
+    v.setAttribute('aria-modal', 'true');
+    v.setAttribute('aria-labelledby', 'yttools-cm-voile-titre');
+    v.dataset.theme = TV.isDark(document.querySelector('ytd-app') || document.body) ? 'dark' : 'light';
+
+    const carte = document.createElement('div');
+    carte.className = 'yttools-cm-voile-carte';
+    const icone = document.createElement('span');
+    icone.className = 'yttools-cm-voile-icone';
+    icone.innerHTML = BULLE;                           // constante, jamais une donnee
+    const titre = document.createElement('p');
+    titre.id = 'yttools-cm-voile-titre';
+    titre.className = 'yttools-cm-voile-titre';
+    titre.textContent = 'Récupération des commentaires en cours';
+    const barre = document.createElement('div');
+    barre.className = 'yttools-cm-voile-barre';
+    barre.setAttribute('role', 'progressbar');
+    barre.setAttribute('aria-valuemin', '0');
+    barre.setAttribute('aria-valuemax', String(d.cible));
+    barre.append(document.createElement('i'));
+    const compte = document.createElement('p');
+    compte.className = 'yttools-cm-voile-compte';
+    const annuler = document.createElement('button');
+    annuler.type = 'button';
+    annuler.className = 'yttools-cm-voile-annuler';
+    annuler.textContent = 'Annuler';
+    annuler.title = 'Annuler (Échap)';
+    annuler.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); annulerCollecte(); });
+    carte.append(icone, titre, barre, compte, annuler);
+    v.append(carte);
+    document.body.append(v);
+    majVoile(d);
+    try { annuler.focus({ preventScroll: true }); } catch { /* sans importance */ }
+  }
+
+  function majVoile(d) {
+    const v = voile();
+    if (!v) return;
+    const n = Math.min(d.n || 0, d.cible);
+    v.querySelector('.yttools-cm-voile-barre i').style.width = `${Math.round((n / d.cible) * 100)}%`;
+    v.querySelector('.yttools-cm-voile-barre').setAttribute('aria-valuenow', String(n));
+    v.querySelector('.yttools-cm-voile-compte').textContent = `${n} / ${d.cible} commentaires`;
+  }
+
+  function retirerVoile() {
+    const v = voile();
+    if (v) v.remove();
+  }
+
+  function annulerCollecte() {
+    if (collecte) collecte.annule = true;
+    retirerVoile();
+  }
+
+  // Pendant le voile : ni molette, ni glisser au doigt, ni raccourcis de YouTube.
+  const bloquer = (e) => { if (voile()) e.preventDefault(); };
+  window.addEventListener('wheel', bloquer, { capture: true, passive: false });
+  window.addEventListener('touchmove', bloquer, { capture: true, passive: false });
+  document.addEventListener('keydown', (e) => {
+    const v = voile();
+    if (!v) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); annulerCollecte(); return; }
+    // Seul « Annuler » reste utilisable au clavier.
+    if (v.contains(e.target) && (e.key === 'Enter' || e.key === ' ')) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+  window.addEventListener('yt-navigate-start', () => { if (voile()) annulerCollecte(); });
+
   /* --------------------------------------------------------------- lancement */
 
   /** Le bouton principal : resumer, ou, une fois le resume fait, ouvrir le champ de question. */
@@ -835,14 +1112,22 @@
     const d = { id, status: 'collect', n: fils().length, cible, qr: [], ouvert: false };
     cache.set(id, d);
     etat = d;
+    collecte = d;
     rafraichir();
-    await charger(cible, (n) => { d.n = n; rafraichir(); });
+    montrerVoile(d);
+    try {
+      await charger(cible, (n) => { d.n = n; rafraichir(); majVoile(d); },
+        () => !d.annule && etat === d && videoId() === id);
+    } finally {
+      if (collecte === d) collecte = null;
+      retirerVoile();
+    }
 
-    // Panneau ferme ou autre video pendant le chargement : on abandonne (les
-    // commentaires a l'ecran ne seraient plus ceux de cette video).
-    if (etat !== d || videoId() !== id) {
+    // Annule, panneau ferme ou autre video pendant le chargement : on abandonne
+    // (les commentaires a l'ecran ne seraient plus ceux de cette video).
+    if (d.annule || etat !== d || videoId() !== id) {
       if (cache.get(id) === d) cache.delete(id);
-      rafraichir();
+      if (d.annule && etat === d) fermer(); else rafraichir();
       return;
     }
 
@@ -888,6 +1173,6 @@
   // Exposes pour les tests uniquement.
   window.__yttoolsComments = {
     lireCommentaires, prompt, promptQuestion, charger, lancer, demander, totalAnnonce, suiteDeLaListe,
-    structurerAvis, rendreAvis, choisirQuantite, dossier, QUANTITES
+    structurerAvis, rendreAvis, choisirQuantite, dossier, QUANTITES, rendreReponse, annulerCollecte
   };
 })();

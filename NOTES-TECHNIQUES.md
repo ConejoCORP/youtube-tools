@@ -204,7 +204,9 @@ Ce dossier ne va pas dans le `sessionStorage` de YouTube, pour deux raisons. Les
 
 Gemini ne garde rien d'une demande à l'autre, puisque chaque demande ouvre une conversation neuve. Chaque question lui redonne donc tout le dossier, puis la question elle-même, **en dernier**, là où elle est le mieux suivie après un long texte. Rouvrir l'ancienne conversation Gemini aurait été plus léger, mais fragile : sur une conversation qui se charge, le pilote pourrait prendre une ancienne réponse pour la nouvelle.
 
-Pour cette question, le prompt demande de dire **qui** a écrit (@pseudo) et de citer ses mots exacts, ce que le résumé, lui, évite.
+Pour cette question, le prompt demande de dire **qui** a écrit (@pseudo) et de citer ses mots exacts, ce que le résumé, lui, évite. Il demande aussi la forme d'une conversation Gemini : une phrase qui répond, des points dont le sujet est en **gras**, et chaque commentaire cité seul sur sa ligne, en citation Markdown (`> @pseudo : « mots »`).
+
+Pour l'afficher, `gemini-writer.js` garde deux informations de plus, sans toucher au texte des blocs (les résumés qui le découpent n'ont rien à changer) : `gras`, la liste des passages en gras, et `cite: true` sur un paragraphe venu d'un `<blockquote>` (ou d'une ligne `> …` en Markdown brut). Une citation devient une **carte de commentaire** : les likes viennent des commentaires relevés, pas de Gemini. Si sa citation ne se retrouve pas dans le vrai commentaire de ce pseudo, c'est le vrai texte qui s'affiche : Gemini ne peut pas faire dire à quelqu'un ce qu'il n'a pas écrit. Un clic sur un @pseudo cherche son fil dans la page (`#author-text`), le fait défiler au centre et l'entoure 2,5 s. Tout est construit en nœuds (`textContent`) : rien de Gemini n'est interprété comme du HTML.
 
 Le champ arrête la propagation des touches : sans ça, taper « k » ou « f » dedans mettrait la vidéo en pause ou en plein écran. Fermer le panneau pendant que Gemini répond ne perd pas la réponse, qui est rangée dans le dossier. Fermer pendant le **chargement** des commentaires annule, parce que les commentaires à l'écran pourraient ne plus être ceux de la vidéo.
 
@@ -213,6 +215,10 @@ Le champ arrête la propagation des touches : sans ça, taper « k » ou « f »
 La flèche ouvre un menu posé dans `<body>`, en position absolue sous la flèche, parce qu'un conteneur de l'en-tête pourrait le rogner. On choisit 50, 100, 200, 300 ou 500 commentaires, et le choix est retenu (`yttoolsCommentsQuantite`). Le délai de chargement suit la quantité : 0,2 s par commentaire, 20 s au minimum. Au-delà de 300, chaque commentaire est coupé à 300 caractères au lieu de 500, pour ne pas noyer Gemini.
 
 La mise en garde du menu existe parce que chaque lot de 20 commentaires est une requête de YouTube. Les déclencher par centaines, et souvent, ressemble à un robot.
+
+### Voile pendant le chargement
+
+Pendant que l'extension fait défiler la page, un voile (`#yttools-cm-voile`, `position: fixed`, `backdrop-filter: blur`) couvre tout, avec le message, la barre de progression, le compteur et « Annuler ». Il dit qu'elle a la main, et empêche qu'on la dérange : il capte les clics, et tant qu'il est là, la molette et le glisser au doigt sont bloqués (`preventDefault` en capture, `passive: false`), comme toutes les touches sauf Échap (annuler) et Entrée ou Espace sur « Annuler ». Le défilement fait par l'extension, lui, n'est pas concerné. `charger()` reçoit une fonction `continuer()` vérifiée à chaque tour et pendant l'attente d'un lot : Annuler, Échap ou un changement de vidéo arrêtent le chargement, la page revient à sa place et rien ne part à Gemini. Le voile s'en va dès les commentaires lus : pendant que Gemini réfléchit dans sa fenêtre, la page redevient utilisable.
 
 ### Chargement des commentaires
 
