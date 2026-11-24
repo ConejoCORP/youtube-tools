@@ -1,6 +1,6 @@
 {
-  "version": "3.18.1",
-  "ref": "083d02dc6df1226da35bd3757465eb69cc198c99",
+  "version": "3.19.0",
+  "ref": "0ec297d84b63a27dae29882854e75fe45f3fabe3",
   "files": [
     "background.js",
     "capture.css",
@@ -46,6 +46,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Mise à jour : quand le navigateur redemande l'accès au dossier, la page le dit et explique où cliquer, au lieu de sembler bloquée.",
+  "notes": "Commentaires : les questions se lisent comme une conversation avec Gemini (bulle, gras, commentaires cités affichés comme de vrais commentaires, clic sur un @pseudo pour le voir dans la page). Pendant la récupération, la page est floutée avec la progression et un bouton Annuler.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
