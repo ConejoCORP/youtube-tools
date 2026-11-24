@@ -46,7 +46,14 @@ function dossier(fichiers, journal, bloques = []) {
       }
       return d.sous[nom];
     },
-    async requestPermission() { return d.perm; }
+    query: 'prompt', demandes: 0, etapesALaDemande: null,
+    async queryPermission() { return d.query; },
+    async requestPermission() {
+      d.demandes++;
+      if (d.surDemande) d.surDemande();
+      if (d.lever) throw Object.assign(new Error('introuvable'), { name: 'NotFoundError' });
+      return d.perm;
+    }
   };
   d.prefixe = '';
   return d;
@@ -95,7 +102,7 @@ function environnement({ installType = 'development', locale = '3.8.0', distant,
   };
 
   const global = {
-    fetch, indexedDB, TextEncoder, TextDecoder, Uint8Array, setTimeout, Date, JSON, Promise, Error, Array, String, Object, encodeURIComponent,
+    fetch, indexedDB, TextEncoder, TextDecoder, Uint8Array, setTimeout, clearTimeout, Date, JSON, Promise, Error, Array, String, Object, encodeURIComponent,
     chrome: {
       runtime: { getManifest: () => ({ version: locale }), getURL: (p) => 'chrome-extension://abc/' + p },
       management: { getSelf: async () => ({ installType }) },
@@ -308,6 +315,53 @@ const bonDossier = (journal, extra = {}, bloques = []) =>
     err = null;
     try { await jumelle.U.choisirDossier(); } catch (x) { err = x; }
     verifie('même version mais autre copie : refusée aussi', err && /autre copie/.test(err.message) && !/version 3/.test(err.message), err && err.message);
+  }
+
+  console.log('\n12. Autorisation du navigateur sur le dossier mémorisé');
+  {
+    // Le navigateur redemande l'acces : la page doit le dire AVANT d'attendre.
+    const e = environnement({ distant: DISTANT });
+    const d = bonDossier(e.journal);
+    d.name = 'youtube-tools';
+    e.choisir(d);
+    await e.U.choisirDossier();
+    e.choisir(null);
+    const info = await e.U.verifier();
+    const etapes = [];
+    d.surDemande = () => { d.etapesALaDemande = [...etapes]; };
+    await e.U.installer(info, (t) => etapes.push(t));
+    verifie('demande d’accès annoncée avant d’attendre la réponse',
+      d.etapesALaDemande && d.etapesALaDemande.some((t) => /Autorise l'accès au dossier « youtube-tools »/.test(t) && /barre d'adresse/.test(t)), d.etapesALaDemande);
+    verifie('accès donné : la mise à jour s’installe', e.journal.includes('manifest.json'), e.journal);
+
+    // Deja autorise : aucune demande, aucun message d'attente.
+    const avant = d.demandes;
+    d.query = 'granted';
+    const etapes2 = [];
+    e.journal.length = 0;
+    await e.U.installer({ ...info, ref: 'autre' }, (t) => etapes2.push(t));
+    verifie('accès déjà donné : rien à accepter', d.demandes === avant && !etapes2.some((t) => /Autorise/.test(t)), { demandes: d.demandes - avant, etapes2 });
+
+    // Refuse ou bulle fermee : message clair, pas de fenetre de choix qui echouerait.
+    d.query = 'prompt';
+    for (const reponse of ['denied', 'prompt']) {
+      d.perm = reponse;
+      const ouv = e.ouvertures();
+      e.journal.length = 0;
+      let err = null;
+      try { await e.U.installer(info, () => {}); } catch (x) { err = x; }
+      verifie(`réponse « ${reponse} » : erreur claire, rien d’écrit, pas de fenêtre de choix`,
+        err && err.name === 'AccesRefuse' && /Choisir un autre dossier/.test(err.message) && e.journal.length === 0 && e.ouvertures() === ouv,
+        err && err.message);
+    }
+
+    // Dossier deplace ou supprime : on redemande le dossier.
+    d.perm = 'granted';
+    d.lever = true;
+    const ouv = e.ouvertures();
+    let err = null;
+    try { await e.U.installer(info, () => {}); } catch (x) { err = x; }
+    verifie('dossier introuvable : la fenêtre de choix s’ouvre', e.ouvertures() === ouv + 1 && err && err.name === 'AbortError', err && err.message);
   }
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));

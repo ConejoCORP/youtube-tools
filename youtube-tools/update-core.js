@@ -197,10 +197,42 @@
     return null;
   }
 
+  /** Autorisation deja donnee sur ce dossier ? Ne demande rien. */
+  async function acces(handle) {
+    try {
+      return await handle.queryPermission({ mode: 'readwrite' });
+    } catch {
+      return 'prompt';
+    }
+  }
+
+  // Le navigateur redemande l'acces au dossier memorise apres un redemarrage,
+  // dans une petite bulle sous la barre d'adresse, facile a ne pas voir :
+  // sans ces messages, la page semblait bloquee.
+  const DEMANDE_ACCES = (nom) => `Autorise l'accès au dossier « ${nom} » : ton navigateur te le demande dans une petite fenêtre en haut, sous la barre d'adresse (« Modifier les fichiers » ou « Autoriser »).`;
+  const TOUJOURS_EN_ATTENTE = "Toujours en attente de ton accord. Tu ne vois pas la demande ? Clique sur la petite icône à gauche de la barre d'adresse, ou recharge cette page (F5) et réessaie.";
+  const ATTENTE_MS = 10000;
+
   async function dossier(progres) {
     const garde = await handleMemorise();
     if (garde) {
-      const perm = await garde.requestPermission({ mode: 'readwrite' });
+      let perm = await acces(garde);
+      if (perm !== 'granted') {
+        progres(DEMANDE_ACCES(garde.name || 'youtube-tools'));
+        const relance = setTimeout(() => progres(TOUJOURS_EN_ATTENTE), ATTENTE_MS);
+        try {
+          perm = await garde.requestPermission({ mode: 'readwrite' });
+        } catch {
+          perm = 'introuvable';                   // dossier deplace ou supprime : on le redemande
+        } finally {
+          clearTimeout(relance);
+        }
+        if (perm === 'denied' || perm === 'prompt') {
+          throw Object.assign(new Error(
+            "ton navigateur n'a pas donné l'accès au dossier. Reclique sur « Mettre à jour maintenant » et accepte la demande, ou passe par « Choisir un autre dossier »"
+          ), { name: 'AccesRefuse' });
+        }
+      }
       if (perm === 'granted' && (await estLeBonDossier(garde))) return garde;
     }
     progres("Choisis le dossier de l'extension (celui qui contient manifest.json)…");
