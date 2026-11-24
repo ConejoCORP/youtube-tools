@@ -1,6 +1,6 @@
 {
-  "version": "3.18.0",
-  "ref": "5ac88ebb3d31fd0199439fb1a65ac50ea62cae66",
+  "version": "3.18.1",
+  "ref": "083d02dc6df1226da35bd3757465eb69cc198c99",
   "files": [
     "background.js",
     "capture.css",
@@ -46,6 +46,6 @@
     "videos.css",
     "videos.js"
   ],
-  "notes": "Résumé des commentaires : une flèche à côté du bouton pour choisir combien de commentaires analyser (50 à 500), avec une mise en garde sur les grandes quantités. Une fois le résumé fait, le bouton devient « Demander plus d'infos » : pose une question à Gemini sur les commentaires (qui a dit quoi, de quoi il parle…). Tout reste en mémoire tant que l'onglet est ouvert.",
+  "notes": "Mise à jour : quand le navigateur redemande l'accès au dossier, la page le dit et explique où cliquer, au lieu de sembler bloquée.",
   "download": "https://github.com/ConejoCORP/youtube-tools/releases/latest"
 }
