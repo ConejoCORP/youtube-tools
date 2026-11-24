@@ -198,7 +198,7 @@ Ces pourcentages restent une **estimation de Gemini**, pas un comptage : un mod�
 
 ### Questions sur les commentaires
 
-Une fois le résumé fait, le bouton devient « Demander plus d'infos » et ouvre un champ de question sous le panneau. Chaque vidéo a son **dossier** en mémoire : les commentaires lus, le résumé, et les questions avec leurs réponses. Il vit dans le script de contenu, donc tant que l'onglet reste ouvert. Une navigation interne vers une autre vidéo le garde, et revenir à la vidéo le retrouve. F5 l'efface.
+Une fois le résumé fait, le champ de question est affiché tout de suite sous le panneau, sans prendre le focus (les raccourcis de YouTube restent actifs tant qu'on n'y clique pas). Le bouton devient « Demander plus d'infos » : il rouvre le panneau si besoin et place le curseur dans le champ. Pendant qu'un nouveau résumé se prépare, le champ est masqué. Chaque vidéo a son **dossier** en mémoire : les commentaires lus, le résumé, et les questions avec leurs réponses. Il vit dans le script de contenu, donc tant que l'onglet reste ouvert. Une navigation interne vers une autre vidéo le garde, et revenir à la vidéo le retrouve. F5 l'efface.
 
 Ce dossier ne va pas dans le `sessionStorage` de YouTube, pour deux raisons. Les scripts de YouTube pourraient y lire les réponses de Gemini. Et quelques centaines de commentaires rempliraient un espace dont YouTube se sert lui-même.
 

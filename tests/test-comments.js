@@ -271,7 +271,9 @@ async function resumer(ctx) {
     const btn = ctx.doc.getElementById('yttools-comments-btn');
     const card = () => ctx.doc.getElementById('yttools-comments-card');
     verifie('le bouton devient « Demander plus d’infos »', /Demander plus d’infos/.test(btn.textContent), btn.textContent);
-    verifie('pas de champ avant de le demander', card() && (!card().querySelector('.yttools-cm-saisie') || card().querySelector('.yttools-cm-saisie').hidden));
+    const visibleDesLeResume = card() && card().querySelector('.yttools-cm-saisie');
+    verifie('le champ de question est la des le resume, sans rien cliquer', visibleDesLeResume && !visibleDesLeResume.hidden);
+    verifie('… sans prendre la main du clavier', ctx.doc.activeElement !== (visibleDesLeResume && visibleDesLeResume.querySelector('.yttools-cm-champ')));
     clic(ctx, btn);
     await sleep(50);
     const saisie = card() && card().querySelector('.yttools-cm-saisie');
@@ -362,11 +364,15 @@ async function resumer(ctx) {
     verifie('le menu reste ouvert, « Refaire » suit le choix', m2 && /Refaire le résumé avec 100 commentaires/.test(m2.textContent));
     const avant = ctx.prompts.length;
     clic(ctx, m2.querySelector('.yttools-cm-refaire'));
+    await sleep(100);
+    const pendant = ctx.doc.querySelector('#yttools-comments-card .yttools-cm-saisie');
+    verifie('pendant le nouveau resume, pas de champ de question', !pendant || pendant.hidden);
     for (let i = 0; i < 200 && ctx.prompts.length === avant; i++) await sleep(150);
     await sleep(400);
     verifie('nouveau resume sur 100 commentaires', lignesDuPrompt(ctx.prompts[avant]) === 100, lignesDuPrompt(ctx.prompts[avant]));
     const c = ctx.doc.getElementById('yttools-comments-card');
     verifie('les questions de l’ancien resume sont effacees', c && c.querySelectorAll('.yttools-cm-q').length === 0);
+    verifie('le champ revient avec le nouveau resume', c && !c.querySelector('.yttools-cm-saisie').hidden);
   }
 
   console.log('\n9. Pendant la recuperation : page floutee, message au centre');

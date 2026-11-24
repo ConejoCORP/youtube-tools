@@ -61,7 +61,7 @@
    * avec sa reponse. C'est ce qui permet de demander a Gemini « c'est qui, et
    * de quoi il parle ? » sans recharger quoi que ce soit.
    *   { id, status: 'collect' | 'loading' | 'ok' | 'error', n, cible, coms,
-   *     total, titre, chaine, structure | blocks, error, qr: [], ouvert }
+   *     total, titre, chaine, structure | blocks, error, qr: [] }
    *   qr : [{ q, status: 'loading' | 'ok' | 'error', blocks, error }]
    */
   const cache = new Map();
@@ -685,6 +685,11 @@
       }
     }
     if (d && d.status === 'ok') majEchange(el, d);
+    else {
+      // Un nouveau resume se prepare : pas de question sur l'ancien.
+      const saisie = el.querySelector('.yttools-cm-saisie');
+      if (saisie && !saisie.hidden) saisie.hidden = true;
+    }
   }
 
   /* ------------------------------------------ questions sur les commentaires */
@@ -950,8 +955,8 @@
 
     let saisie = el.querySelector('.yttools-cm-saisie');
     if (!saisie) { saisie = construireSaisie(); el.append(saisie); }
-    const visible = !!d.ouvert || d.qr.length > 0;
-    if (saisie.hidden === visible) saisie.hidden = !visible;
+    // Le champ est la des que le resume l'est : pas besoin de le demander.
+    if (saisie.hidden) saisie.hidden = false;
     const attend = repond(d);
     const champ = saisie.querySelector('.yttools-cm-champ');
     const envoyer = saisie.querySelector('.yttools-cm-envoyer');
@@ -965,7 +970,6 @@
     const texte = promptQuestion(d, q);                // avant d'ajouter la question au fil
     const item = { q, status: 'loading' };
     d.qr.push(item);
-    d.ouvert = true;
     rafraichir();
     const rep = await TV.ai.ask(texte);
     if (rep.ok) Object.assign(item, { status: 'ok', blocks: rep.blocks });
@@ -1083,12 +1087,11 @@
 
   /* --------------------------------------------------------------- lancement */
 
-  /** Le bouton principal : resumer, ou, une fois le resume fait, ouvrir le champ de question. */
+  /** Le bouton principal : resumer, ou, une fois le resume fait, aller au champ de question. */
   function clicPrincipal() {
     const d = dossier();
     if (d && d.status === 'ok') {
       etat = d;
-      d.ouvert = true;
       rafraichir();
       const champ = document.querySelector(`#${CARD_ID} .yttools-cm-champ`);
       if (champ) {
@@ -1109,7 +1112,7 @@
     if (occupe(connu)) { etat = connu; rafraichir(); return; }
 
     const cible = quantite;
-    const d = { id, status: 'collect', n: fils().length, cible, qr: [], ouvert: false };
+    const d = { id, status: 'collect', n: fils().length, cible, qr: [] };
     cache.set(id, d);
     etat = d;
     collecte = d;
