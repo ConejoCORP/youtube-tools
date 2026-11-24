@@ -196,6 +196,24 @@ Les pourcentages sont lus où que Gemini les mette : titre, ligne ou puce, sous 
 
 Ces pourcentages restent une **estimation de Gemini**, pas un comptage : un modèle de langage compte mal sur cent éléments, mais l'ordre de grandeur est juste.
 
+### Questions sur les commentaires
+
+Une fois le résumé fait, le bouton devient « Demander plus d'infos » et ouvre un champ de question sous le panneau. Chaque vidéo a son **dossier** en mémoire : les commentaires lus, le résumé, et les questions avec leurs réponses. Il vit dans le script de contenu, donc tant que l'onglet reste ouvert. Une navigation interne vers une autre vidéo le garde, et revenir à la vidéo le retrouve. F5 l'efface.
+
+Ce dossier ne va pas dans le `sessionStorage` de YouTube, pour deux raisons. Les scripts de YouTube pourraient y lire les réponses de Gemini. Et quelques centaines de commentaires rempliraient un espace dont YouTube se sert lui-même.
+
+Gemini ne garde rien d'une demande à l'autre, puisque chaque demande ouvre une conversation neuve. Chaque question lui redonne donc tout le dossier, puis la question elle-même, **en dernier**, là où elle est le mieux suivie après un long texte. Rouvrir l'ancienne conversation Gemini aurait été plus léger, mais fragile : sur une conversation qui se charge, le pilote pourrait prendre une ancienne réponse pour la nouvelle.
+
+Pour cette question, le prompt demande de dire **qui** a écrit (@pseudo) et de citer ses mots exacts, ce que le résumé, lui, évite.
+
+Le champ arrête la propagation des touches : sans ça, taper « k » ou « f » dedans mettrait la vidéo en pause ou en plein écran. Fermer le panneau pendant que Gemini répond ne perd pas la réponse, qui est rangée dans le dossier. Fermer pendant le **chargement** des commentaires annule, parce que les commentaires à l'écran pourraient ne plus être ceux de la vidéo.
+
+### Quantité de commentaires
+
+La flèche ouvre un menu posé dans `<body>`, en position absolue sous la flèche, parce qu'un conteneur de l'en-tête pourrait le rogner. On choisit 50, 100, 200, 300 ou 500 commentaires, et le choix est retenu (`yttoolsCommentsQuantite`). Le délai de chargement suit la quantité : 0,2 s par commentaire, 20 s au minimum. Au-delà de 300, chaque commentaire est coupé à 300 caractères au lieu de 500, pour ne pas noyer Gemini.
+
+La mise en garde du menu existe parce que chaque lot de 20 commentaires est une requête de YouTube. Les déclencher par centaines, et souvent, ressemble à un robot.
+
 ### Chargement des commentaires
 
 Repères lus sur une vraie page : `ytd-comment-thread-renderer` > `ytd-comment-view-model`, avec `#author-text`, `#content-text`, `#vote-count-middle`, `#more-replies`. Piège : `#pinned-comment-badge` et `#creator-heart` existent sur **tous** les commentaires, vides quand ils ne s'appliquent pas. Un repérage par présence aurait marqué chaque commentaire comme épinglé.

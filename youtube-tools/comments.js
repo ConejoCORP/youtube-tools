@@ -33,19 +33,51 @@
   const TV = window.__yttools;
   if (!TV || !TV.ai) { console.warn('[YouTube Tools] common.js ou summary.js absent'); return; }
 
+  const GROUPE_ID = 'yttools-comments-groupe';   // le bouton et sa fleche
   const BTN_ID = 'yttools-comments-btn';
+  const MENU_ID = 'yttools-cm-menu';
   const CARD_ID = 'yttools-comments-card';
-  const CIBLE = 100;                 // assez pour degager les tendances, sans noyer Gemini
-  const DELAI_CHARGEMENT = 20000;    // au-dela, on resume ce qu'on a
-  const TAILLE_MAX = 500;            // un pave de 3 000 caracteres ne pese pas plus qu'un autre avis
+
+  // Combien de commentaires charger, au choix (fleche a cote du bouton). 100
+  // suffit a degager les tendances ; davantage fait charger a YouTube autant de
+  // lots de 20, ce qui, fait trop souvent, peut lui faire limiter le compte.
+  const QUANTITES = [50, 100, 200, 300, 500];
+  const PAR_DEFAUT = 100;
+  const CLE_QUANTITE = 'yttoolsCommentsQuantite';
+  // Au-dela, on resume ce qu'on a : environ 1 s par lot de 20, avec de la marge.
+  const delaiChargement = (cible) => Math.max(20000, cible * 200);
+  // Un pave de 3 000 caracteres ne pese pas plus qu'un autre avis ; sur un gros
+  // lot, on coupe plus court pour ne pas noyer Gemini.
+  const tailleMax = (cible) => (cible >= 300 ? 300 : 500);
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
   const videoId = () => new URLSearchParams(location.search).get('v') || '';
   const isWatchPage = () => location.pathname === '/watch' && !!videoId();
 
-  const cache = new Map();           // id -> { structure ou blocks, n }
-  let etat = null;                   // { id, status: 'collect' | 'loading' | 'ok' | 'error', n, structure | blocks, error }
+  /*
+   * Un « dossier » par video, garde en memoire tant que l'onglet reste ouvert :
+   * les commentaires lus, le resume de Gemini et chaque question posee ensuite
+   * avec sa reponse. C'est ce qui permet de demander a Gemini « c'est qui, et
+   * de quoi il parle ? » sans recharger quoi que ce soit.
+   *   { id, status: 'collect' | 'loading' | 'ok' | 'error', n, cible, coms,
+   *     total, titre, chaine, structure | blocks, error, qr: [], ouvert }
+   *   qr : [{ q, status: 'loading' | 'ok' | 'error', blocks, error }]
+   */
+  const cache = new Map();
+  let etat = null;                   // le dossier affiche dans le panneau ; null = panneau ferme
+  let quantite = PAR_DEFAUT;
+
+  const dossier = () => cache.get(videoId()) || null;
+  const occupe = (d) => !!d && (d.status === 'collect' || d.status === 'loading');
+  const repond = (d) => !!d && d.status === 'ok' && d.qr.some((x) => x.status === 'loading');
+
+  try {
+    chrome.storage.local.get(CLE_QUANTITE).then((s) => {
+      const v = Number(s && s[CLE_QUANTITE]);
+      if (QUANTITES.includes(v)) { quantite = v; rafraichir(); }
+    }).catch(() => {});
+  } catch { /* contexte d'extension indisponible : 100 par defaut */ }
 
   /* ----------------------------------------------------------------- lecture */
 
@@ -53,7 +85,7 @@
   const fils = () => document.querySelectorAll('ytd-comments ytd-comment-thread-renderer');
 
   /** Les commentaires charges, dans l'ordre de YouTube (« Les plus populaires »). */
-  function lireCommentaires() {
+  function lireCommentaires(taille = 500) {
     const out = [];
     const vus = new Set();
     for (const fil of fils()) {
@@ -72,7 +104,7 @@
       const epingle = clean(c.querySelector('#pinned-comment-badge') && c.querySelector('#pinned-comment-badge').textContent);
       out.push({
         auteur,
-        texte: texte.length > TAILLE_MAX ? texte.slice(0, TAILLE_MAX) + '…' : texte,
+        texte: texte.length > taille ? texte.slice(0, taille) + '…' : texte,
         likes: likesTxt ? (TV.parseCount(likesTxt) || 0) : 0,
         reponses: repTxt ? (TV.parseCount(repTxt) || 0) : 0,
         epingle: !!epingle
@@ -117,18 +149,18 @@
   }
 
   /**
-   * Fait charger des commentaires jusqu'a CIBLE, puis remet la page ou elle
+   * Fait charger des commentaires jusqu'a `cible`, puis remet la page ou elle
    * etait. YouTube charge la suite quand la fin de la liste arrive a l'ecran :
    * on y amene le dernier commentaire puis la continuation, et on descend
    * encore d'une demi-page — ce qui marche quel que soit le declencheur exact.
    */
-  async function charger(onProgres) {
+  async function charger(cible, onProgres) {
     const y0 = window.scrollY;
-    const fin = Date.now() + DELAI_CHARGEMENT;
+    const fin = Date.now() + delaiChargement(cible);
     let n = fils().length;
     let surPlace = 0;
     try {
-      while (n < CIBLE && Date.now() < fin) {
+      while (n < cible && Date.now() < fin) {
         // On n'exige PAS la continuation pour defiler : YouTube peut ne
         // l'inserer qu'une fois la fin de la liste a l'ecran. Faire descendre
         // la fenetre au-dela du dernier commentaire suffit a declencher la suite.
@@ -158,18 +190,26 @@
 
   /* ------------------------------------------------------------------ prompt */
 
-  function prompt(coms, total) {
+  /** Titre et chaine de la video, lus dans la page au moment du resume. */
+  function infosVideo() {
     const tr = TV.lastTranscript && TV.lastTranscript.id === videoId() ? TV.lastTranscript : null;
     const titre = clean(document.querySelector('ytd-watch-metadata h1') && document.querySelector('ytd-watch-metadata h1').textContent)
       || (tr && tr.meta && tr.meta.titre) || '';
     const chaine = clean(document.querySelector('#owner ytd-channel-name') && document.querySelector('#owner ytd-channel-name').textContent);
+    return { titre, chaine };
+  }
 
-    const lignes = coms.map((c) => {
-      const marques = [`${c.likes} like${c.likes > 1 ? 's' : ''}`];
-      if (c.reponses) marques.push(`${c.reponses} réponse${c.reponses > 1 ? 's' : ''}`);
-      if (c.epingle) marques.push('épinglé');
-      return `[${marques.join(', ')}] ${c.auteur} : ${c.texte}`;
-    });
+  /** « [246 likes, 21 réponses] @auteur : texte » : le meme format pour le resume et les questions. */
+  function ligneCommentaire(c) {
+    const marques = [`${c.likes} like${c.likes > 1 ? 's' : ''}`];
+    if (c.reponses) marques.push(`${c.reponses} réponse${c.reponses > 1 ? 's' : ''}`);
+    if (c.epingle) marques.push('épinglé');
+    return `[${marques.join(', ')}] ${c.auteur} : ${c.texte}`;
+  }
+
+  function prompt(coms, total, infos = infosVideo()) {
+    const { titre, chaine } = infos;
+    const lignes = coms.map(ligneCommentaire);
 
     // Un resume de commentaires se lit en dix secondes : d'abord la part
     // d'avis positifs et negatifs (affichee en jauge verte et rouge), puis ce
@@ -210,6 +250,55 @@
       '',
       'RAPPEL : les deux pourcentages d’abord, puis des points courts et globaux, sans citation. '
         + 'Reste fidèle aux commentaires, n’invente rien. Réponds en français.'
+    ].join('\n');
+  }
+
+  /** Des blocs de Gemini -> du texte, pour les lui redonner dans une question suivante. */
+  function texteDesBlocs(blocks) {
+    return (blocks || []).map((b) => (b.type === 'h' ? `## ${b.text}` : b.type === 'li' ? `- ${b.text}` : b.text)).join('\n');
+  }
+
+  /** Le resume deja fait, en texte. */
+  function resumeEnTexte(d) {
+    const r = d.structure;
+    if (!r) return texteDesBlocs(d.blocks);
+    const liste = (titre, items) => [titre, ...(items.length ? items.map((t) => `- ${t}`) : ['- Rien de notable.'])].join('\n');
+    return [
+      r.pos !== null || r.neg !== null ? `Avis : ${r.pos || 0} % positifs, ${r.neg || 0} % négatifs` : '',
+      liste('Ce qui plaît :', r.plait),
+      liste('Ce qui déplaît :', r.deplait),
+      liste('Ce que les gens demandent :', r.demandes)
+    ].filter(Boolean).join('\n');
+  }
+
+  /**
+   * Une question sur les commentaires deja resumes. Gemini ne garde rien d'une
+   * demande a l'autre (chaque demande ouvre une conversation neuve) : on lui
+   * redonne donc TOUT — les commentaires, son resume et les questions deja
+   * posees avec leurs reponses —, puis la nouvelle question, en dernier, la ou
+   * elle est le mieux suivie apres un long texte.
+   */
+  function promptQuestion(d, question) {
+    const precedentes = d.qr.filter((x) => x.status === 'ok')
+      .map((x) => `Question : ${x.q}\nTa réponse :\n${texteDesBlocs(x.blocks)}`);
+    return [
+      'Voici les commentaires d’une vidéo YouTube, le résumé que tu en as fait, puis une question à leur sujet.',
+      '',
+      d.titre && `Titre : ${d.titre}`,
+      d.chaine && `Chaîne : ${d.chaine}`,
+      '',
+      `Commentaires (${d.coms.length} parmi les plus populaires ; likes et réponses entre crochets) :`,
+      d.coms.map(ligneCommentaire).join('\n'),
+      '',
+      'Ton résumé :',
+      resumeEnTexte(d),
+      '',
+      ...(precedentes.length ? ['Questions déjà posées :', precedentes.join('\n\n'), ''] : []),
+      `Nouvelle question : ${question}`,
+      '',
+      'Réponds en français, brièvement : quelques phrases ou une courte liste. Appuie-toi uniquement sur les '
+        + 'commentaires ci-dessus. Quand ça aide, dis qui l’a écrit (@pseudo) et cite ses mots exacts entre guillemets. '
+        + 'Si les commentaires ne permettent pas de répondre, dis-le simplement.'
     ].join('\n');
   }
 
@@ -369,22 +458,44 @@
 
   /* ------------------------------------------------------------------ bouton */
 
-  function buildButton() {
+  // Chevron et coche de Material Design (licence Apache 2.0).
+  const CHEVRON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>';
+  const COCHE = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+
+  /**
+   * Le bouton principal, puis une fleche qui ouvre le choix de la quantite.
+   * Avant le resume il dit « Resumer 100 commentaires » ; une fois le resume
+   * fait, « Demander plus d'infos » : il ouvre le champ de question.
+   */
+  function buildGroupe() {
+    const groupe = document.createElement('span');
+    groupe.id = GROUPE_ID;
+    groupe.className = 'yttools-cm-groupe';
+
     const btn = document.createElement('button');
     btn.id = BTN_ID;
     btn.type = 'button';
     btn.className = 'yttools-ai-btn';
-    btn.title = 'Résumer les commentaires avec Gemini';
-    btn.setAttribute('aria-label', 'Résumer les commentaires avec Gemini');
     const icon = document.createElement('span');
     icon.className = 'yttools-ai-icon';
     icon.innerHTML = TV.ai.etoile(20);                 // constante, jamais une donnee
     const label = document.createElement('span');
     label.className = 'yttools-ai-label';
-    label.textContent = 'Résumer les commentaires';
     btn.append(icon, label);
-    btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); lancer(); });
-    return btn;
+    btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); clicPrincipal(); });
+
+    const fleche = document.createElement('button');
+    fleche.type = 'button';
+    fleche.className = 'yttools-ai-btn yttools-cm-fleche';
+    fleche.title = 'Nombre de commentaires à analyser';
+    fleche.setAttribute('aria-label', 'Nombre de commentaires à analyser');
+    fleche.setAttribute('aria-haspopup', 'menu');
+    fleche.setAttribute('aria-expanded', 'false');
+    fleche.innerHTML = CHEVRON;                        // constante, jamais une donnee
+    fleche.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); basculerMenu(fleche); });
+
+    groupe.append(btn, fleche);
+    return groupe;
   }
 
   function placeButton() {
@@ -392,60 +503,286 @@
     if (!h) return;
     // A cote de « Trier par », sur la meme ligne que le nombre de commentaires.
     const zone = h.querySelector('#additional-section') || h.querySelector('#title') || h;
-    zone.append(buildButton());
+    zone.append(buildGroupe());
   }
 
-  function refreshButton(el) {
-    TV.applyTheme(el);
-    const occupe = !!etat && etat.id === videoId() && (etat.status === 'collect' || etat.status === 'loading');
-    const label = el.querySelector('.yttools-ai-label');
-    const voulu = occupe ? 'Résumé en cours…' : 'Résumer les commentaires';
+  function refreshButton(groupe) {
+    const btn = groupe.querySelector('#' + BTN_ID);
+    const fleche = groupe.querySelector('.yttools-cm-fleche');
+    if (!btn || !fleche) return;
+    TV.applyTheme(btn);
+    TV.applyTheme(fleche);
+    const d = dossier();
+    const resume = !!d && d.status === 'ok';
+    const enCours = occupe(d) || repond(d);
+    const voulu = occupe(d) ? 'Résumé en cours…'
+      : repond(d) ? 'Gemini répond…'
+      : resume ? 'Demander plus d’infos'
+      : `Résumer ${quantite} commentaires`;
+    const label = btn.querySelector('.yttools-ai-label');
     if (label.textContent !== voulu) label.textContent = voulu;
-    if (el.dataset.state !== (occupe ? 'loading' : 'idle')) el.dataset.state = occupe ? 'loading' : 'idle';
-    el.disabled = occupe;
+    const titre = resume ? 'Poser une question à Gemini sur ces commentaires' : 'Résumer les commentaires avec Gemini';
+    if (btn.title !== titre) { btn.title = titre; btn.setAttribute('aria-label', titre); }
+    if (btn.dataset.state !== (enCours ? 'loading' : 'idle')) btn.dataset.state = enCours ? 'loading' : 'idle';
+    btn.disabled = enCours;
+    fleche.disabled = occupe(d);
   }
+
+  /* --------------------------------------------- choix de la quantite */
+
+  const menuOuvert = () => document.getElementById(MENU_ID);
+
+  function fermerMenu() {
+    const m = menuOuvert();
+    if (m) m.remove();
+    document.querySelectorAll(`#${GROUPE_ID} .yttools-cm-fleche[aria-expanded="true"]`)
+      .forEach((f) => f.setAttribute('aria-expanded', 'false'));
+  }
+
+  function choisirQuantite(v) {
+    if (!QUANTITES.includes(v)) return;
+    quantite = v;
+    try { chrome.storage.local.set({ [CLE_QUANTITE]: v }); } catch { /* garde en memoire pour l'onglet */ }
+    rafraichir();
+  }
+
+  /** Le contenu du menu, refait a chaque choix (coche, libelle de « Refaire »). */
+  function remplirMenu(menu) {
+    menu.textContent = '';
+    const titre = document.createElement('p');
+    titre.className = 'yttools-cm-menu-titre';
+    titre.textContent = 'Commentaires à analyser';
+    menu.append(titre);
+
+    for (const v of QUANTITES) {
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'yttools-cm-option';
+      opt.setAttribute('role', 'menuitemradio');
+      opt.setAttribute('aria-checked', String(v === quantite));
+      opt.dataset.quantite = String(v);
+      const coche = document.createElement('span');
+      coche.className = 'yttools-cm-coche';
+      if (v === quantite) coche.innerHTML = COCHE;     // constante, jamais une donnee
+      const nom = document.createElement('span');
+      nom.textContent = `${v} commentaires`;
+      opt.append(coche, nom);
+      if (v === PAR_DEFAUT) {
+        const reco = document.createElement('span');
+        reco.className = 'yttools-cm-reco';
+        reco.textContent = 'recommandé';
+        opt.append(reco);
+      }
+      opt.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        choisirQuantite(v);
+        // Resume deja fait : on reste, pour pouvoir le refaire avec ce nombre.
+        if (dossier() && dossier().status === 'ok') remplirMenu(menu); else fermerMenu();
+      });
+      menu.append(opt);
+    }
+
+    const note = document.createElement('p');
+    note.className = 'yttools-cm-note';
+    note.textContent = 'Plus il y en a, plus YouTube doit en charger d’un coup. Fait trop souvent, ça ressemble '
+      + 'à un robot et YouTube peut limiter ton compte quelque temps : garde les grandes quantités pour les vidéos qui comptent.';
+    menu.append(note);
+
+    const d = dossier();
+    if (d && d.status === 'ok') {
+      const refaire = document.createElement('button');
+      refaire.type = 'button';
+      refaire.className = 'yttools-cm-refaire';
+      refaire.textContent = `Refaire le résumé avec ${quantite} commentaires`;
+      refaire.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); fermerMenu(); lancer(true); });
+      menu.append(refaire);
+    }
+  }
+
+  /**
+   * Le menu est pose dans <body>, sous la fleche : dans l'en-tete des
+   * commentaires, un conteneur de YouTube pourrait le rogner. En position
+   * absolue dans la page, il suit le defilement tout seul.
+   */
+  function basculerMenu(fleche) {
+    if (menuOuvert()) { fermerMenu(); return; }
+    const menu = document.createElement('div');
+    menu.id = MENU_ID;
+    menu.className = 'yttools-cm-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Nombre de commentaires à analyser');
+    menu.dataset.theme = TV.isDark(fleche.parentElement) ? 'dark' : 'light';
+    remplirMenu(menu);
+    document.body.append(menu);
+
+    const r = fleche.getBoundingClientRect();
+    const largeur = menu.offsetWidth || 300;
+    menu.style.top = `${Math.round(r.bottom + window.scrollY + 6)}px`;
+    menu.style.left = `${Math.round(Math.max(8, r.right + window.scrollX - largeur))}px`;
+    fleche.setAttribute('aria-expanded', 'true');
+  }
+
+  // Un clic ailleurs, Echap, un changement de taille ou de page : le menu se ferme.
+  document.addEventListener('mousedown', (e) => {
+    const m = menuOuvert();
+    if (m && !m.contains(e.target) && !(e.target.closest && e.target.closest('.yttools-cm-fleche'))) fermerMenu();
+  }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuOuvert()) fermerMenu(); }, true);
+  window.addEventListener('resize', fermerMenu);
+  window.addEventListener('yt-navigate-start', fermerMenu);
 
   /* ----------------------------------------------------------------- panneau */
 
+  /** La croix : le panneau se ferme, mais le dossier reste en memoire. */
   function fermer() {
     etat = null;
     document.getElementById(CARD_ID)?.remove();
+    rafraichir();
   }
 
+  function attente(el, texte) {
+    const p = document.createElement('p');
+    p.className = 'yttools-ai-wait';
+    p.textContent = texte;
+    el.append(p);
+  }
+
+  /** Le resume (ou l'attente, ou l'erreur) : refait seulement quand l'etat change. */
   function renderBody(el) {
-    const cle = etat ? `${etat.id}|${etat.status}|${etat.status === 'collect' ? etat.n : ''}` : '';
-    if (el.dataset.rendered === cle) return;
-    el.dataset.rendered = cle;
-    el.dataset.state = etat ? (etat.status === 'collect' ? 'loading' : etat.status) : '';
-
-    const body = el.querySelector('.yttools-ai-body');
-    const sous = el.querySelector('.yttools-ai-sub');
-    body.textContent = '';
-    sous.textContent = '';
-    if (!etat) return;
-
-    const attente = (texte) => {
-      const p = document.createElement('p');
-      p.className = 'yttools-ai-wait';
-      p.textContent = texte;
-      body.append(p);
-    };
-    if (etat.status === 'collect') {
-      attente(`Chargement des commentaires… ${etat.n || 0} / ${CIBLE}. La page défile un instant puis revient à sa place.`);
-      return;
+    const d = etat;
+    const etatCarte = d ? (d.status === 'collect' ? 'loading' : d.status) : '';
+    if (el.dataset.state !== etatCarte) el.dataset.state = etatCarte;
+    const cle = d ? `${d.id}|${d.status}|${d.status === 'collect' ? d.n : ''}|${d.cible || ''}` : '';
+    if (el.dataset.rendered !== cle) {
+      el.dataset.rendered = cle;
+      el.dataset.echange = '';
+      const body = el.querySelector('.yttools-ai-body');
+      const sous = el.querySelector('.yttools-ai-sub');
+      body.textContent = '';
+      sous.textContent = '';
+      if (!d) return;
+      if (d.status === 'collect') {
+        attente(body, `Chargement des commentaires… ${d.n || 0} / ${d.cible}. La page défile un instant puis revient à sa place.`);
+      } else if (d.status === 'loading') {
+        attente(body, `Gemini lit ${d.n} commentaires… une petite fenêtre s’est ouverte, elle se refermera toute seule.`);
+      } else if (d.status === 'error') {
+        TV.ai.message(body, TV.ai.erreurLisible(d.error), () => lancer(true));
+      } else {
+        sous.textContent = `par Gemini · ${d.n} commentaires analysés`;
+        if (d.structure) rendreAvis(body, d.structure);
+        else TV.ai.renderBlocks(body, d.blocks);       // reponse hors format : telle quelle
+        const echange = document.createElement('div');
+        echange.className = 'yttools-cm-echange';
+        body.append(echange);
+      }
     }
-    if (etat.status === 'loading') {
-      attente(`Gemini lit ${etat.n} commentaires… une petite fenêtre s’est ouverte, elle se refermera toute seule.`);
-      return;
-    }
-    if (etat.status === 'error') {
-      TV.ai.message(body, TV.ai.erreurLisible(etat.error), () => { cache.delete(videoId()); lancer(true); });
-      return;
-    }
-    sous.textContent = `par Gemini · ${etat.n} commentaires analysés`;
-    if (etat.structure) rendreAvis(body, etat.structure);
-    else TV.ai.renderBlocks(body, etat.blocks);       // reponse hors format : telle quelle
+    if (d && d.status === 'ok') majEchange(el, d);
   }
+
+  /* ------------------------------------------ questions sur les commentaires */
+
+  /** Une question posee, puis sa reponse (ou l'attente, ou l'erreur). */
+  function elementsQR(d, x) {
+    const q = document.createElement('p');
+    q.className = 'yttools-cm-q';
+    q.textContent = x.q;                               // textContent : rien n'est interprete
+    const r = document.createElement('div');
+    r.className = 'yttools-cm-r';
+    if (x.status === 'loading') {
+      attente(r, `Gemini relit les ${d.coms.length} commentaires pour te répondre… une petite fenêtre s’est ouverte, elle se refermera toute seule.`);
+    } else if (x.status === 'error') {
+      TV.ai.message(r, TV.ai.erreurLisible(x.error), () => { d.qr.splice(d.qr.indexOf(x), 1); demander(x.q, d); });
+    } else {
+      TV.ai.renderBlocks(r, x.blocks);
+    }
+    return [q, r];
+  }
+
+  /** Le champ de question, sous le panneau : construit une fois, ce qui y est tape ne se perd pas. */
+  function construireSaisie() {
+    const saisie = document.createElement('div');
+    saisie.className = 'yttools-cm-saisie';
+    saisie.hidden = true;
+
+    const ligne = document.createElement('div');
+    ligne.className = 'yttools-cm-ligne';
+    const champ = document.createElement('input');
+    champ.type = 'text';
+    champ.className = 'yttools-cm-champ';
+    champ.maxLength = 500;
+    champ.placeholder = 'Une question sur ces commentaires ? Ex. : c’est qui, et de quoi il parle ?';
+    champ.setAttribute('aria-label', 'Question à Gemini sur ces commentaires');
+    const envoyer = document.createElement('button');
+    envoyer.type = 'button';
+    envoyer.className = 'yttools-cm-envoyer';
+    envoyer.textContent = 'Demander';
+
+    const partir = () => {
+      const q = clean(champ.value);
+      if (!q || !etat || repond(etat)) return;
+      champ.value = '';
+      demander(q);
+    };
+    // Les raccourcis de YouTube (k, j, f, espace…) ne doivent pas reagir a la frappe.
+    for (const type of ['keydown', 'keyup', 'keypress']) {
+      champ.addEventListener(type, (e) => {
+        e.stopPropagation();
+        if (type === 'keydown' && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); partir(); }
+      });
+    }
+    envoyer.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); partir(); });
+    ligne.append(champ, envoyer);
+
+    const aide = document.createElement('p');
+    aide.className = 'yttools-cm-aide';
+    aide.textContent = 'Gemini relit les commentaires et son résumé pour te répondre. '
+      + 'Tout reste en mémoire tant que l’onglet est ouvert.';
+    saisie.append(ligne, aide);
+    return saisie;
+  }
+
+  /**
+   * Les questions et leurs reponses, sous le resume, puis le champ. Le fil
+   * n'est refait que quand une question part ou recoit sa reponse.
+   */
+  function majEchange(el, d) {
+    const body = el.querySelector('.yttools-ai-body');
+    const echange = body.querySelector('.yttools-cm-echange');
+    const cle = d.qr.map((x) => x.status).join(',');
+    if (echange && el.dataset.echange !== cle) {
+      el.dataset.echange = cle;
+      echange.textContent = '';
+      d.qr.forEach((x) => echange.append(...elementsQR(d, x)));
+      if (d.qr.length) body.scrollTop = body.scrollHeight;      // la derniere reponse a l'ecran
+    }
+
+    let saisie = el.querySelector('.yttools-cm-saisie');
+    if (!saisie) { saisie = construireSaisie(); el.append(saisie); }
+    const visible = !!d.ouvert || d.qr.length > 0;
+    if (saisie.hidden === visible) saisie.hidden = !visible;
+    const attend = repond(d);
+    const champ = saisie.querySelector('.yttools-cm-champ');
+    const envoyer = saisie.querySelector('.yttools-cm-envoyer');
+    if (champ.disabled !== attend) champ.disabled = attend;
+    if (envoyer.disabled !== attend) envoyer.disabled = attend;
+  }
+
+  async function demander(question, d = etat) {
+    const q = clean(question);
+    if (!d || d.status !== 'ok' || !q || repond(d)) return;
+    const texte = promptQuestion(d, q);                // avant d'ajouter la question au fil
+    const item = { q, status: 'loading' };
+    d.qr.push(item);
+    d.ouvert = true;
+    rafraichir();
+    const rep = await TV.ai.ask(texte);
+    if (rep.ok) Object.assign(item, { status: 'ok', blocks: rep.blocks });
+    else Object.assign(item, { status: 'error', error: rep.error });
+    rafraichir();
+  }
+
+  /* ----------------------------------------------------------------- panneau */
 
   function placeCard() {
     const h = enTete();
@@ -460,54 +797,82 @@
   }
 
   function rafraichir() {
-    const btn = document.getElementById(BTN_ID);
-    if (btn) refreshButton(btn);
+    const groupe = document.getElementById(GROUPE_ID);
+    if (groupe) refreshButton(groupe);
     let card = document.getElementById(CARD_ID);
-    if (etat && etat.id === videoId() && !card) { placeCard(); card = document.getElementById(CARD_ID); }
+    if (etat && etat.id === videoId() && !card && enTete()) { placeCard(); card = document.getElementById(CARD_ID); }
     if (card) refreshCard(card);
   }
 
   /* --------------------------------------------------------------- lancement */
 
+  /** Le bouton principal : resumer, ou, une fois le resume fait, ouvrir le champ de question. */
+  function clicPrincipal() {
+    const d = dossier();
+    if (d && d.status === 'ok') {
+      etat = d;
+      d.ouvert = true;
+      rafraichir();
+      const champ = document.querySelector(`#${CARD_ID} .yttools-cm-champ`);
+      if (champ) {
+        const saisie = champ.closest('.yttools-cm-saisie');
+        if (saisie && saisie.scrollIntoView) saisie.scrollIntoView({ block: 'nearest' });
+        champ.focus();
+      }
+      return;
+    }
+    if (occupe(d)) { etat = d; rafraichir(); return; }
+    lancer();
+  }
+
   async function lancer(forcer = false) {
     const id = videoId();
-    if (!forcer && cache.has(id)) {
-      etat = { id, status: 'ok', ...cache.get(id) };
+    const connu = cache.get(id);
+    if (!forcer && connu && connu.status === 'ok') { etat = connu; rafraichir(); return; }
+    if (occupe(connu)) { etat = connu; rafraichir(); return; }
+
+    const cible = quantite;
+    const d = { id, status: 'collect', n: fils().length, cible, qr: [], ouvert: false };
+    cache.set(id, d);
+    etat = d;
+    rafraichir();
+    await charger(cible, (n) => { d.n = n; rafraichir(); });
+
+    // Panneau ferme ou autre video pendant le chargement : on abandonne (les
+    // commentaires a l'ecran ne seraient plus ceux de cette video).
+    if (etat !== d || videoId() !== id) {
+      if (cache.get(id) === d) cache.delete(id);
       rafraichir();
       return;
     }
-    if (etat && etat.id === id && (etat.status === 'collect' || etat.status === 'loading')) return;
 
-    etat = { id, status: 'collect', n: fils().length };
-    rafraichir();
-    await charger((n) => { if (etat && etat.id === id) { etat.n = n; rafraichir(); } });
-    if (!etat || etat.id !== id) return;
-
-    const coms = lireCommentaires();
+    const coms = lireCommentaires(tailleMax(cible)).slice(0, cible);
     if (!coms.length) {
-      etat = { id, status: 'error', error: 'Aucun commentaire à résumer sur cette vidéo.' };
+      Object.assign(d, { status: 'error', error: 'Aucun commentaire à résumer sur cette vidéo.' });
+      cache.delete(id);
       rafraichir();
       return;
     }
 
-    etat = { id, status: 'loading', n: coms.length };
+    Object.assign(d, { status: 'loading', n: coms.length, coms, total: totalAnnonce(), ...infosVideo() });
     rafraichir();
-    const rep = await TV.ai.ask(prompt(coms, totalAnnonce()));
-    if (!etat || etat.id !== id) return;                 // video changee ou panneau ferme
-
+    const rep = await TV.ai.ask(prompt(coms, d.total, d));
+    // Panneau ferme entre-temps : le resume est garde quand meme, et le bouton
+    // proposera « Demander plus d'infos ». Seul un nouveau resume le remplace.
+    if (cache.get(id) !== d) return;
     if (rep.ok) {
       const structure = structurerAvis(rep.blocks);
-      const contenu = structure ? { structure, n: coms.length } : { blocks: rep.blocks, n: coms.length };
-      cache.set(id, contenu);
-      etat = { id, status: 'ok', ...contenu };
+      if (structure) d.structure = structure; else d.blocks = rep.blocks;
+      d.status = 'ok';
     } else {
-      etat = { id, status: 'error', error: rep.error };
+      Object.assign(d, { status: 'error', error: rep.error });
+      cache.delete(id);
     }
     rafraichir();
   }
 
   TV.keepMounted({
-    id: BTN_ID,
+    id: GROUPE_ID,
     wanted: () => isWatchPage() && !!enTete(),
     place: placeButton,
     refresh: refreshButton
@@ -521,5 +886,8 @@
   });
 
   // Exposes pour les tests uniquement.
-  window.__yttoolsComments = { lireCommentaires, prompt, charger, lancer, totalAnnonce, suiteDeLaListe, structurerAvis, rendreAvis };
+  window.__yttoolsComments = {
+    lireCommentaires, prompt, promptQuestion, charger, lancer, demander, totalAnnonce, suiteDeLaListe,
+    structurerAvis, rendreAvis, choisirQuantite, dossier, QUANTITES
+  };
 })();

@@ -32,6 +32,9 @@ const BLOCS = [
   { type: 'h', level: 2, text: 'Ce que les gens demandent' }, { type: 'li', text: 'Revoir le passage de 0:45' }
 ];
 
+// Reponse de Gemini a une question sur les commentaires.
+const REPONSE_QR = [{ type: 'p', text: 'C’est @un_internaute : il trouve que « du coup » revient trop souvent.' }];
+
 /**
  * sansContinuation : la continuation de la liste est absente au clic, et
  *   YouTube ne la (re)met qu'une fois la fin de la liste a l'ecran.
@@ -93,15 +96,25 @@ function page({ sansContinuation = false, lenteur = 300 } = {}) {
   };
 
   let prompt = null;
+  const prompts = [];
+  const stock = {};
   window.chrome = {
-    storage: { local: { get: async () => ({}), set: async () => {} }, onChanged: { addListener: () => {} } },
-    runtime: { sendMessage: (m) => { prompt = m.prompt; return new Promise((r) => setTimeout(() => r({ ok: true, blocks: BLOCS }), 150)); } }
+    storage: { local: {
+      get: async (k) => (k in stock ? { [k]: stock[k] } : {}),
+      set: async (o) => { Object.assign(stock, o); }
+    }, onChanged: { addListener: () => {} } },
+    runtime: { sendMessage: (m) => {
+      prompt = m.prompt;
+      prompts.push(m.prompt);
+      const blocks = /\nNouvelle question : /.test(m.prompt) ? REPONSE_QR : BLOCS;
+      return new Promise((r) => setTimeout(() => r({ ok: true, blocks }), 150));
+    } }
   };
   global.window = window; global.document = doc; global.NodeFilter = window.NodeFilter;
   window.eval(lire('common.js'));
   window.eval(lire('summary.js'));
   window.eval(lire('comments.js'));
-  return { window, doc, positions, lots: () => lots, prompt: () => prompt, y: () => y };
+  return { window, doc, positions, lots: () => lots, prompt: () => prompt, prompts, stock, y: () => y };
 }
 
 /** L'ANCIENNE logique de chargement, recopiee telle quelle pour comparaison. */
@@ -143,7 +156,8 @@ async function resumer(ctx) {
     verifie('aucun faux « epingle » (badges vides partout)', coms.every((c) => !c.epingle));
     verifie('total annonce lu (1 191)', ctx.window.__yttoolsComments.totalAnnonce() === 1191);
     const btn = ctx.doc.getElementById('yttools-comments-btn');
-    verifie('bouton a cote de « Trier par »', btn && btn.parentElement.id === 'additional-section');
+    verifie('bouton a cote de « Trier par »', btn && btn.parentElement.id === 'yttools-comments-groupe'
+      && btn.parentElement.parentElement.id === 'additional-section');
     const suite = ctx.window.__yttoolsComments.suiteDeLaListe();
     verifie('continuation de la LISTE choisie : ni reponses, ni gabarit initial',
       suite && !suite.classList.contains('replies-continuation') && !suite.hasAttribute('is-initial-load'));
@@ -214,6 +228,106 @@ async function resumer(ctx) {
     verifie('ce qui plait : 2 points', blocs[0] && blocs[0].querySelectorAll('li').length === 2);
     verifie('ce qui deplait : 1 point', blocs[1] && blocs[1].querySelectorAll('li').length === 1);
     verifie('timecode cite par le public devenu un lien', card && !!card.querySelector('.is-ask a.yttools-ai-ts[data-t="45"]'));
+  }
+
+  const lignesDuPrompt = (p) => ((p || '').split('Commentaires :')[1] || '').split('\n').filter((l) => /^\[\d+ like/.test(l)).length;
+
+  console.log('\n6. La fleche : choisir combien de commentaires analyser');
+  const ctx = page();
+  {
+    await sleep(1200);
+    const btn = ctx.doc.getElementById('yttools-comments-btn');
+    const fleche = ctx.doc.querySelector('#yttools-comments-groupe .yttools-cm-fleche');
+    verifie('une fleche juste a droite du bouton', !!fleche && fleche.previousElementSibling === btn);
+    verifie('le bouton annonce la quantite', /Résumer 100 commentaires/.test(btn.textContent), btn.textContent);
+    clic(ctx, fleche);
+    let menu = ctx.doc.getElementById('yttools-cm-menu');
+    verifie('menu ouvert sous la fleche', !!menu && fleche.getAttribute('aria-expanded') === 'true');
+    const options = menu ? [...menu.querySelectorAll('.yttools-cm-option')] : [];
+    verifie('choix : 50, 100, 200, 300, 500', options.map((o) => o.dataset.quantite).join(',') === '50,100,200,300,500');
+    verifie('100 coche, et recommande', options[1] && options[1].getAttribute('aria-checked') === 'true' && /recommandé/.test(options[1].textContent));
+    verifie('mise en garde sous les choix', menu && /YouTube peut limiter ton compte/.test(menu.querySelector('.yttools-cm-note').textContent));
+    verifie('pas de « Refaire » avant un premier resume', menu && !menu.querySelector('.yttools-cm-refaire'));
+    clic(ctx, options[0]);
+    await sleep(50);
+    verifie('choisir 50 ferme le menu', !ctx.doc.getElementById('yttools-cm-menu'));
+    verifie('le choix est retenu', ctx.stock.yttoolsCommentsQuantite === 50, ctx.stock);
+    verifie('le bouton suit', /Résumer 50 commentaires/.test(btn.textContent), btn.textContent);
+    clic(ctx, fleche);
+    ctx.doc.dispatchEvent(new ctx.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    verifie('Echap ferme le menu', !ctx.doc.getElementById('yttools-cm-menu'));
+
+    await resumer(ctx);
+    verifie('50 commentaires envoyes a Gemini', lignesDuPrompt(ctx.prompt()) === 50, lignesDuPrompt(ctx.prompt()));
+  }
+
+  console.log('\n7. Une fois le resume fait : « Demander plus d’infos »');
+  {
+    const btn = ctx.doc.getElementById('yttools-comments-btn');
+    const card = () => ctx.doc.getElementById('yttools-comments-card');
+    verifie('le bouton devient « Demander plus d’infos »', /Demander plus d’infos/.test(btn.textContent), btn.textContent);
+    verifie('pas de champ avant de le demander', card() && (!card().querySelector('.yttools-cm-saisie') || card().querySelector('.yttools-cm-saisie').hidden));
+    clic(ctx, btn);
+    await sleep(50);
+    const saisie = card() && card().querySelector('.yttools-cm-saisie');
+    const champ = saisie && saisie.querySelector('.yttools-cm-champ');
+    verifie('un champ de question apparait, pret a taper', saisie && !saisie.hidden && ctx.doc.activeElement === champ);
+
+    let fuite = 0;
+    ctx.doc.addEventListener('keydown', () => { fuite++; });
+    champ.dispatchEvent(new ctx.window.KeyboardEvent('keydown', { key: 'k', bubbles: true }));
+    verifie('la frappe ne declenche pas les raccourcis de YouTube', fuite === 0, fuite);
+
+    const avant = ctx.prompts.length;
+    champ.value = 'C’est qui, et de quoi il parle ?';
+    champ.dispatchEvent(new ctx.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    verifie('Entree envoie, le bouton patiente', /Gemini répond/.test(btn.textContent) && champ.disabled, btn.textContent);
+    await sleep(400);
+    const q1 = ctx.prompts[avant] || '';
+    verifie('une demande a Gemini', ctx.prompts.length === avant + 1);
+    verifie('… avec TOUS les commentaires gardes', (q1.match(/^\[\d+ like/gm) || []).length === 50);
+    verifie('… et le resume deja fait', /Ton résumé :/.test(q1) && /Ce qui déplaît :\n- Une scène jugée trop longue/.test(q1));
+    verifie('… et la question, a la fin', /\nNouvelle question : C’est qui, et de quoi il parle \?\n/.test(q1) && !/Questions déjà posées/.test(q1));
+    verifie('qui l’a ecrit et ses mots exacts demandes', /@pseudo/.test(q1) && /mots exacts entre guillemets/.test(q1));
+    const questions = () => [...card().querySelectorAll('.yttools-cm-q')].map((q) => q.textContent);
+    verifie('question et reponse affichees sous le resume', questions().join('|') === 'C’est qui, et de quoi il parle ?'
+      && /du coup » revient trop souvent/.test(card().querySelector('.yttools-cm-r').textContent));
+    verifie('le champ se libere', !champ.disabled && champ.value === '');
+
+    champ.value = 'Il y en a d’autres qui disent pareil ?';
+    clic(ctx, saisie.querySelector('.yttools-cm-envoyer'));
+    await sleep(400);
+    const q2 = ctx.prompts[ctx.prompts.length - 1] || '';
+    verifie('question suivante : la precedente et sa reponse sont rappelees',
+      /Questions déjà posées :\nQuestion : C’est qui, et de quoi il parle \?\nTa réponse :\nC’est @un_internaute/.test(q2));
+
+    clic(ctx, card().querySelector('.yttools-ai-close'));
+    await sleep(50);
+    verifie('croix : le panneau se ferme', !card());
+    verifie('… mais le bouton propose toujours « Demander plus d’infos »', /Demander plus d’infos/.test(btn.textContent));
+    const envois = ctx.prompts.length;
+    clic(ctx, btn);
+    await sleep(50);
+    verifie('rouvert avec tout le fil, sans rien redemander', card() && questions().length === 2 && ctx.prompts.length === envois, questions());
+  }
+
+  console.log('\n8. Refaire le resume avec une autre quantite');
+  {
+    const fleche = ctx.doc.querySelector('#yttools-comments-groupe .yttools-cm-fleche');
+    clic(ctx, fleche);
+    const menu = ctx.doc.getElementById('yttools-cm-menu');
+    verifie('« Refaire » propose une fois le resume fait', menu && /Refaire le résumé avec 50 commentaires/.test(menu.textContent));
+    clic(ctx, menu.querySelector('.yttools-cm-option[data-quantite="100"]'));
+    await sleep(50);
+    const m2 = ctx.doc.getElementById('yttools-cm-menu');
+    verifie('le menu reste ouvert, « Refaire » suit le choix', m2 && /Refaire le résumé avec 100 commentaires/.test(m2.textContent));
+    const avant = ctx.prompts.length;
+    clic(ctx, m2.querySelector('.yttools-cm-refaire'));
+    for (let i = 0; i < 200 && ctx.prompts.length === avant; i++) await sleep(150);
+    await sleep(400);
+    verifie('nouveau resume sur 100 commentaires', lignesDuPrompt(ctx.prompts[avant]) === 100, lignesDuPrompt(ctx.prompts[avant]));
+    const c = ctx.doc.getElementById('yttools-comments-card');
+    verifie('les questions de l’ancien resume sont effacees', c && c.querySelectorAll('.yttools-cm-q').length === 0);
   }
 
   console.log('\n' + (echecs ? echecs + ' ECHEC(S)' : 'tout passe'));

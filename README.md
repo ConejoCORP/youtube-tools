@@ -98,7 +98,11 @@ Aucune clé d'API : c'est ta session Gemini qui répond. Une petite fenêtre Gem
 
 ### Résumé des commentaires (bouton dans l'en-tête des commentaires)
 
-À côté de **Trier par**, un bouton **Résumer les commentaires**. YouTube n'en affiche qu'une vingtaine à la fois : l'extension fait défiler la page pour en charger une **centaine**, revient exactement où tu étais, puis les envoie à Gemini en **une seule demande**. Le résumé s'affiche juste sous l'en-tête :
+À côté de **Trier par**, un bouton **Résumer 100 commentaires**. YouTube n'en affiche qu'une vingtaine à la fois : l'extension fait défiler la page pour en charger le nombre voulu, revient exactement où tu étais, puis les envoie à Gemini en **une seule demande**.
+
+La **petite flèche** à droite du bouton permet de choisir combien de commentaires analyser : 50, 100 (recommandé), 200, 300 ou 500. Le choix est retenu. Plus il y en a, plus YouTube doit en charger d'un coup. Fait trop souvent, ça ressemble à un robot et YouTube peut limiter ton compte quelque temps : le menu le rappelle.
+
+Le résumé s'affiche juste sous l'en-tête :
 
 - une **jauge verte et rouge** : la part d'avis positifs et négatifs, en pourcentage, parmi les commentaires qui donnent un avis (les questions et les blagues sans avis n'y comptent pas) ;
 - **Ce qui plaît** (en vert) : ce que disent les avis positifs ;
@@ -108,6 +112,8 @@ Aucune clé d'API : c'est ta session Gemini qui répond. Une petite fenêtre Gem
 Des points courts, pas de paragraphes ni de citations : ça se lit en dix secondes. Les pourcentages sont l'estimation de Gemini, pas un comptage exact.
 
 Les likes et le nombre de réponses accompagnent chaque commentaire : un avis très aimé pèse plus qu'un autre. Les timecodes cités par le public deviennent cliquables.
+
+Une fois le résumé fait, le bouton devient **Demander plus d'infos**. Il ouvre un champ pour poser une question à Gemini sur ces commentaires, par exemple : « c'est qui, l'internaute qui n'a pas aimé ce tic de langage, et de quoi il parle ? ». Gemini répond juste en dessous, en citant le pseudo et ses mots exacts quand ça aide. Tant que l'onglet reste ouvert, l'extension garde en mémoire les commentaires lus, le résumé, et chaque question avec sa réponse. Chaque question les redonne donc à Gemini, et on peut enchaîner. Fermer le panneau ne perd rien : le bouton le rouvre avec tout le fil. Recharger la page (F5) ou fermer l'onglet efface tout. La flèche propose aussi de **refaire le résumé** avec un autre nombre de commentaires.
 
 ### Export des vidéos d'une page (bouton ⤓, barre du haut)
 

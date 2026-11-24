@@ -547,9 +547,216 @@ html[dark] .yttools-ai-card:not([data-theme]) {
    gauche, la pastille venait coller (voire mordre) le libelle du tri, et
    l'alignement sur la ligne de base la decalait de la rangee. */
 
-#yttools-comments-btn {
-  height: 32px;
+#yttools-comments-groupe {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   margin: 0 12px 0 16px;
   vertical-align: middle;
   align-self: center;
 }
+
+#yttools-comments-groupe .yttools-ai-btn {
+  height: 32px;
+  margin: 0;
+}
+
+/* Le bouton et sa flèche forment une seule pastille, coupée en deux. */
+#yttools-comments-btn {
+  border-radius: 16px 4px 4px 16px;
+}
+
+#yttools-comments-groupe .yttools-cm-fleche {
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+  border-radius: 4px 16px 16px 4px;
+}
+
+.yttools-cm-fleche[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* ---------------------------------------- menu : nombre de commentaires */
+
+.yttools-cm-menu {
+  position: absolute;
+  z-index: 2300;
+  box-sizing: border-box;
+  width: 300px;
+  padding: 8px 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f0f0f;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, .1), 0 2px 8px rgba(0, 0, 0, .18);
+  font-family: "Roboto", "Arial", sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.yttools-cm-menu-titre {
+  margin: 0;
+  padding: 4px 16px 6px;
+  color: #606060;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.yttools-cm-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 16px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.yttools-cm-option:hover {
+  background: rgba(0, 0, 0, .06);
+}
+
+.yttools-cm-coche {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.yttools-cm-reco {
+  margin-left: auto;
+  color: #606060;
+  font-size: 12px;
+}
+
+.yttools-cm-note {
+  margin: 6px 0 0;
+  padding: 8px 16px 4px;
+  border-top: 1px solid rgba(0, 0, 0, .1);
+  color: #606060;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.yttools-cm-refaire {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 8px 16px 4px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, .06);
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.yttools-cm-refaire:hover {
+  background: rgba(0, 0, 0, .1);
+}
+
+.yttools-cm-menu[data-theme="dark"] {
+  background: #282828;
+  color: #f1f1f1;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, .4);
+}
+
+.yttools-cm-menu[data-theme="dark"] .yttools-cm-menu-titre,
+.yttools-cm-menu[data-theme="dark"] .yttools-cm-reco,
+.yttools-cm-menu[data-theme="dark"] .yttools-cm-note {
+  color: #aaa;
+}
+
+.yttools-cm-menu[data-theme="dark"] .yttools-cm-option:hover { background: rgba(255, 255, 255, .1); }
+.yttools-cm-menu[data-theme="dark"] .yttools-cm-note { border-top-color: rgba(255, 255, 255, .15); }
+.yttools-cm-menu[data-theme="dark"] .yttools-cm-refaire { background: rgba(255, 255, 255, .1); }
+.yttools-cm-menu[data-theme="dark"] .yttools-cm-refaire:hover { background: rgba(255, 255, 255, .16); }
+
+/* ------------------------------------- questions sur les commentaires */
+
+.yttools-cm-echange:empty {
+  display: none;
+}
+
+.yttools-ai-card .yttools-cm-q {
+  width: fit-content;
+  max-width: 85%;
+  margin: 14px 0 6px auto;
+  padding: 6px 12px;
+  border-radius: 14px 14px 4px 14px;
+  background: rgba(6, 95, 212, .1);
+}
+
+.yttools-cm-r {
+  margin: 0 0 4px;
+}
+
+.yttools-cm-saisie {
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(0, 0, 0, .1);
+}
+
+.yttools-cm-saisie[hidden] {
+  display: none;
+}
+
+.yttools-cm-ligne {
+  display: flex;
+  gap: 8px;
+}
+
+.yttools-cm-champ {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 18px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.yttools-cm-champ:focus {
+  outline: none;
+  border-color: #065fd4;
+}
+
+.yttools-cm-envoyer {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 18px;
+  background: #065fd4;
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.yttools-cm-envoyer:disabled,
+.yttools-cm-champ:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.yttools-ai-card .yttools-cm-aide {
+  margin: 6px 0 0;
+  color: var(--yt-spec-text-secondary, #606060);
+  font-size: 12px;
+}
+
+.yttools-ai-card[data-theme="dark"] .yttools-cm-q { background: rgba(62, 166, 255, .16); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-saisie { border-top-color: rgba(255, 255, 255, .15); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-champ { border-color: rgba(255, 255, 255, .25); }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-champ:focus { border-color: #3ea6ff; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-envoyer { background: #3ea6ff; color: #0f0f0f; }
+.yttools-ai-card[data-theme="dark"] .yttools-cm-aide { color: var(--yt-spec-text-secondary, #aaa); }
